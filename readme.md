@@ -13,7 +13,8 @@ Windows and Linux:
 * sdl2
 * sdl2-image
 * sdl2-mixer
-* Jsontools     (https://www.getlazarus.org/json/)  [and it's forks on github]
+* [optional: ] Jsontools     (https://www.getlazarus.org/json/)  
+  [and it's forks on github:  https://github.com/peardox/JsonTools]
 * Lazarus / Freepascal
 * Pascal SDL2 Header files 
 * Game graphics, sounds and the fontfile can be downloaded at https://parallelrealities.itch.io/sdl2-tutorials
