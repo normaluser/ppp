@@ -2,7 +2,7 @@
 
 Tutorial (6 parts) about programming a game in pascal / lazarus using SDL2.
 
-The repository contains the source code for all 6 parts. (and pascal-specific tutorials...)
+The repository contains the source code for all 6 parts.
 
 The original tutorial (and "c" - source code) can be found at: https://www.parallelrealities.co.uk/tutorials/ppp
 
