@@ -21,7 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
-* picture atlas integerated 
+* picture atlas integerated
 ***************************************************************************}
 
 PROGRAM ppp05;
