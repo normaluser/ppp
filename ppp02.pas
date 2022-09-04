@@ -23,7 +23,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * Procedural Parameters for Delegate Draw/Logic
 ***************************************************************************}
 
-PROGRAM ppp04;
+PROGRAM ppp02;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
 USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, sysutils;
@@ -36,13 +36,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_HEIGHT        = 20;
       MAP_RENDER_WIDTH  = 20;
       MAP_RENDER_HEIGHT = 12;
-      PLAYER_MOVE_SPEED = 6;
-
+      PLAYER_MOVE_SPEED = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-      EF_NONE           = 0;
-      EF_WEIGHTLESS     = (2 << 0);   //2
-      EF_SOLID          = (2 << 1);   //4
 
 TYPE                                        { "T" short for "TYPE" }
      TDelegating = Procedure;
@@ -62,19 +58,9 @@ TYPE                                        { "T" short for "TYPE" }
                      textureHead, textureTail : PTextur;
                      Delegate : TDelegate;
                    end;
-     PEntity     = ^TEntity;
-     TEntity     = RECORD
-                     x, y, dx, dy : double;
-                     w, h : integer;
-                     isOnGround : Boolean;
-                     texture : PSDL_Texture;
-                     flags : longint;
-                     next : PEntity;
-                   end;
      TStage      = RECORD
                      camera : TSDL_Point;
                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
-                     EntityHead, EntityTail : PEntity;
                    end;
 
 VAR app        : TApp;
@@ -84,9 +70,6 @@ VAR app        : TApp;
     gTicks     : UInt32;
     gRemainder : double;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
-    pete       : ARRAY[0..1] of PSDL_Texture;
-    player,
-    selv       : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -96,15 +79,27 @@ begin
   HALT(1);
 end;
 
-function collision(x1, y1, w1, h1, x2, y2, w2, h2 : integer) : Boolean;
+// ****************   CAMERA   ****************
+
+procedure doCamera;
 begin
-  collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
+  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
+  stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
-procedure InitEntity(VAR e : PEntity);
+procedure doPlayer;
 begin
-  e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.texture := NIL; e^.flags := EF_NONE; e^.next := NIL;
+  if ((app.keyboard[SDL_SCANCODE_A] = 1) OR (app.keyboard[SDL_SCANCODE_LEFT] = 1)) then
+    stage.camera.x := stage.camera.x - PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_D] = 1) OR (app.keyboard[SDL_SCANCODE_RIGHT] = 1)) then
+    stage.camera.x := stage.camera.x + PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_W] = 1) OR (app.keyboard[SDL_SCANCODE_UP] = 1)) then
+    stage.camera.y := stage.camera.y - PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_S] = 1) OR (app.keyboard[SDL_SCANCODE_DOWN] = 1)) then
+    stage.camera.y := stage.camera.y + PLAYER_MOVE_SPEED;
 end;
 
 // *****************   DRAW   *****************
@@ -175,6 +170,26 @@ begin
   loadTexture := tg;
 end;
 
+{
+procedure loadTiles;     // build with PChar; ERROR in loadTexture(filename)
+VAR i : integer;         // because PChar uses always the same Pointer Adress??
+    filename, Nr, a, b : pchar;
+begin
+  a := 'gfx/tile';
+  b := '.png';
+
+  filename := StrAlloc(StrLen(a)+6);
+  for i := 1 to MAX_TILES do
+  begin
+    Nr := Pchar(IntToStr(i));
+    StrMove(filename,a,StrLen(a)+1);
+    StrCat(filename,Nr);
+    StrCat(filename,b);
+    tiles[i] := loadTexture(filename);   // hat das mit dem Zeiger auf PChar zu tun?  IMMER die selbe Speicheradresse??
+  end;
+end;
+}
+
 procedure loadTiles;
 VAR i : integer;
     filename : string;
@@ -185,7 +200,25 @@ begin
     tiles[i] := loadTexture(filename);
   end;
 end;
+procedure initStage;
+begin
+  NEW(app.textureHead);
+  app.textureHead^.name := '';
+  app.textureHead^.texture := NIL;
+  app.textureHead^.next := NIL;
+  app.textureTail := app.textureHead;
+end;
 
+procedure prepareScene;
+begin
+  SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
+  SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
+end;
 // *****************    MAP   *****************
 
 procedure drawMap;
@@ -240,7 +273,7 @@ begin
       line := stringReplace(line, ' ','',[rfReplaceAll]);
       le := length(line);
 
-      for i := 1 to le do
+      for  i:= 1 to le do
       begin
         stage.map[x,y] := ORD(line[i]) - 48;
         INC(x);
@@ -255,272 +288,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map04.dat');
-end;
-
-
-// ***************   ENTITIES   ***************
-
-function isInsideMap(x, y : integer) : Boolean;
-begin
-  if ((x >= 0) AND (y >= 0) AND (x < MAP_WIDTH) AND (y < MAP_HEIGHT))
-    then isInsideMap := TRUE     //1
-    else isInsideMap := FALSE;   //0
-end;
-
-procedure addEntFromLine(line : string);
-VAR e : PEntity;
-    namen : string;
-    l, a, b : integer;
-begin
-  NEW(e);
-  initEntity(e);
-  stage.EntityTail^.next := e;
-  stage.EntityTail := e;
-  l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
-  if namen = 'BLOCK' then
-  begin
-    e^.x := a; e^.y := b;
-    e^.texture := loadTexture('gfx/block.png');
-    SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
-    e^.flags := EF_SOLID + EF_WEIGHTLESS;
-  end;
-end;
-
-procedure loadEnts(filename : string);
-VAR Datei: Text;               (* Dateizeiger *)
-    zeile : string;
-BEGIN
-  assign (Datei, filename);    (* Pfad festlegen *)
-  {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
-  if IOResult = 0 then
-  begin
-    REPEAT
-      readLn (Datei, zeile);     (* eine Zeile lesen *)
-      addEntFromLine(zeile);
-    UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
-    close (Datei);      (* Datei schliessen *)
-  end
-  else errorMessage(filename + ' not found!');
-end;
-
-procedure drawEntities;
-VAR e : PEntity;
-begin
-  e := stage.entityHead^.next;
-  while e <> NIL do
-  begin
-    blit(e^.texture, Round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
-    e := e^.next;
-  end;
-end;
-
-procedure moveToEntities(e : PEntity; dx, dy : double);
-VAR other : PEntity;
-    adj : integer;
-begin
-  other := stage.entityHead^.next;
-  while other <> NIL do
-  begin
-    if ((other <> e) AND collision(Round(e^.x), Round(e^.y), Round(e^.w), Round(e^.h), Round(other^.x), Round(other^.y), Round(other^.w), Round(other^.h))) then
-    begin
-      if (other^.flags AND EF_SOLID) <> 0 then
-      begin
-        if (dy <> 0) then
-        begin
-          //adj = dy > 0 ? -e^.h : other^.h;
-          if dy > 0 then
-            adj := -e^.h
-          else
-            adj := other^.h;
-
-          e^.y := other^.y + adj;
-          e^.dy := 0;
-
-          if dy > 0 then e^.isOnGround := TRUE;
-        end;
-
-        if (dx <> 0) then
-        begin
-          //adj = dx > 0 ? -e^.w : other^.w;
-          if dx > 0 then
-            adj := -e^.w
-          else
-            adj := other^.w;
-
-          e^.x := other^.x + adj;
-          e^.dx := 0;
-        end;
-      end;
-    end;
-    other := other^.next;
-  end;
-end;
-
-procedure moveToWorld(e : PEntity; dx, dy : double);
-VAR mx, my, hit, adj : integer;
-begin
-  if (dx <> 0) then
-  begin
-    //mx = dx > 0 ? (e->x + e->w) : e->x;
-    if dx > 0 then mx := Round(e^.x + e^.w)
-              else mx := Round(e^.x);
-    mx := mx DIV TILE_SIZE;
-    my := Round(e^.y) DIV TILE_SIZE;
-    hit := 0;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    my := (Round(e^.y + e^.h) - 1) DIV TILE_SIZE;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    if hit = 1 then
-    begin
-      //adj = dx > 0 ? -e^.w : TILE_SIZE
-      if dx > 0 then adj := -e^.w
-                else adj := TILE_SIZE;
-      e^.x := (mx * TILE_SIZE) + adj;
-      e^.dx := 0;
-    end;
-  end;
-
-  if (dy <> 0) then
-  begin
-    //my = dy > 0 ? (e^.y + e^.h) : e^.y;
-    if dy > 0 then my := Round(e^.y + e^.h)
-              else my := Round(e^.y);
-    my := my DIV TILE_SIZE;
-    mx := Round(e^.x) DIV TILE_SIZE;
-    hit := 0;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    mx := (Round(e^.x + e^.w) - 1) DIV TILE_SIZE;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    if (hit = 1) then
-    begin
-      //adj = dy > 0 ? -e^.h : TILE_SIZE;
-      if dy > 0 then adj := -e^.h
-                else adj := TILE_SIZE;
-      e^.y := (my * TILE_SIZE) + adj;
-      e^.dy := 0;
-
-      //e^.isOnGround = dy > 0;
-      if dy > 0 then e^.isOnGround := TRUE;
-    end;
-  end;
-end;
-
-procedure move(e : PEntity);
-begin
-  if (NOT(e^.flags AND EF_WEIGHTLESS <> 0)) then
-  begin
-    e^.dy := e^.dy + 1.5;
-    e^.dy := MAX(MIN(e^.dy, 18), -999);
-  end;
-  e^.isOnGround := FALSE;
-
-  e^.x := e^.x + e^.dx;
-  moveToWorld(e, e^.dx, 0);
-  moveToEntities(e, e^.dx, 0);
-
-  e^.y := e^.y + e^.dy;
-  moveToWorld(e, 0, e^.dy);
-  moveToEntities(e, 0, e^.dy);
-
-  e^.x := MIN(MAX(e^.x, 0), MAP_WIDTH  * TILE_SIZE);
-  e^.y := MIN(MAX(e^.y, 0), MAP_HEIGHT * TILE_SIZE);
-end;
-
-procedure doEntities;
-VAR e : PEntity;
-begin
-  e := stage.EntityHead^.next;
-  while e <> NIL do
-  begin
-    selv := e;
-    move(e);
-    e := e^.next;
-  end;
-end;
-
-procedure initEntities;
-begin
-  loadEnts('data/ents04.dat');
-end;
-
-// ****************   CAMERA   ****************
-
-procedure doCamera;
-begin
-  stage.camera.x := Round(player^.x + (player^.w / 2));
-  stage.camera.y := Round(player^.y + (player^.h / 2));
-
-  stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
-  stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
-
-  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH  * TILE_SIZE) - SCREEN_WIDTH);
-  stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
-end;
-
-procedure doPlayer;
-begin
-  player^.dx := 0;
-
-  if ((app.keyboard[SDL_SCANCODE_A] = 1) OR (app.keyboard[SDL_SCANCODE_LEFT] = 1)) then
-  begin
-    player^.dx := player^.dx - PLAYER_MOVE_SPEED;
-    player^.texture := pete[1];
-  end;
-
-  if ((app.keyboard[SDL_SCANCODE_D] = 1) OR (app.keyboard[SDL_SCANCODE_RIGHT] = 1)) then
-  begin
-    player^.dx := player^.dx + PLAYER_MOVE_SPEED;
-    player^.texture := pete[0];
-  end;
-
-  if ((app.keyboard[SDL_SCANCODE_I] = 1) AND (player^.isOnGround = TRUE)) then
-    player^.dy := -20;
-
-  if (app.keyboard[SDL_SCANCODE_SPACE] = 1) then
-  begin
-    player^.x := 0;
-    player^.y := 0;
-    app.keyboard[SDL_SCANCODE_SPACE] := 0;
-  end;
-end;
-
-procedure initPlayer;
-begin
-  NEW(player);
-  initEntity(player);
-  stage.EntityTail^.next := player;
-  stage.EntityTail := player;
-
-  pete[0] := loadTexture('gfx/pete01.png');
-  pete[1] := loadTexture('gfx/pete02.png');
-
-  player^.texture := pete[0];
-
-  SDL_QueryTexture(player^.texture, NIL, NIL, @player^.w, @player^.h);
-end;
-
-procedure prepareScene;
-begin
-  SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
-  SDL_RenderClear(app.Renderer);
-end;
-
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
+  loadMap('data/map01.dat');
 end;
 
 // *****************   STAGE   *****************
@@ -531,33 +299,12 @@ begin
   SDL_RenderFillRect(app.renderer, NIL);
 
   drawMap;
-  drawEntities;
 end;
 
 procedure logic_Game;
 begin
   doPlayer;
-  doEntities;
   doCamera;
-end;
-
-procedure initStage;
-begin
-  NEW(app.textureHead);
-  app.textureHead^.name := '';
-  app.textureHead^.texture := NIL;
-  app.textureHead^.next := NIL;
-  app.textureTail := app.textureHead;
-
-  NEW(stage.entityHead);
-  stage.entityHead^.next := NIL;
-  stage.entityTail := stage.entityHead;
-
-  initEntities;
-  initPlayer;
-  initMap;
-  app.Delegate.Logic := @logic_Game;
-  app.Delegate.Draw  := @draw_Game;
 end;
 
 // ***************   INIT SDL   ***************
@@ -570,7 +317,7 @@ begin
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
-  app.Window := SDL_CreateWindow('Pete''s Pizza Party 4', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
+  app.Window := SDL_CreateWindow('Pete''s Pizza Party 2', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
 
@@ -601,29 +348,10 @@ begin
   DISPOSE(app.TextureHead);
 end;
 
-procedure destroyEntity;
-VAR ent : PEntity;
-begin
-  ent := stage.EntityHead^.next;
-  while (ent <> NIL) do
-  begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
-    DISPOSE(ent);
-    ent := ent^.next;
-  end;
-  DISPOSE(stage.EntityHead);
-end;
-
 procedure cleanUp;
 begin
   destroyTexture;
-  destroyEntity;
   if ExitCode <> 0 then WriteLn('CleanUp complete!');
-end;
-
-procedure initGame;
-begin
 end;
 
 procedure atExit;
@@ -688,10 +416,12 @@ end;
 begin
   CLRSCR;
   initSDL;
-  initGame;
   initStage;
+  initMap;
   addExitProc(@atExit);
   exitLoop := FALSE;
+  app.Delegate.Logic := @logic_Game;
+  app.Delegate.Draw  := @draw_Game;
 
   while exitLoop = FALSE do
   begin

@@ -273,7 +273,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map01.dat');
+  loadMap('data/map05.dat');
 end;
 
 // *****************   Block   ****************
@@ -565,7 +565,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents01.dat');
+  loadEnts('data/ents05.dat');
 end;
 
 // ****************   CAMERA   ****************

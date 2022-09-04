@@ -87,23 +87,23 @@ TYPE                                        { "T" short for "TYPE" }
                      pizzaTotal, pizzaFound : integer;
                    end;
 
-     TAlignment = (TEXT_LEFT, TEXT_CENTER, TEXT_RIGHT);
-     TSound     = (SND_JUMP, SND_PIZZA,	SND_PIZZA_DONE,	SND_MAX);
-     TChannel   = (CH_PLAYER, CH_PIZZA);
+     TAlignment  = (TEXT_LEFT, TEXT_CENTER, TEXT_RIGHT);
+     TSound      = (SND_JUMP, SND_PIZZA,	SND_PIZZA_DONE,	SND_MAX);
+     TChannel    = (CH_PLAYER, CH_PIZZA);
 
-VAR app         : TApp;
-    stage       : TStage;
-    event       : TSDL_EVENT;
-    exitLoop    : BOOLEAN;
-    gTicks      : UInt32;
-    gRemainder  : double;
-    fontTexture : PSDL_Texture;
-    tiles       : ARRAY[1..MAX_TILES] of PSDL_Texture;
-    pete        : ARRAY[0..1] of PSDL_Texture;
-    music       : PMix_Music;
-    sounds      : Array[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
+VAR app          : TApp;
+    stage        : TStage;
+    event        : TSDL_EVENT;
+    exitLoop     : BOOLEAN;
+    gTicks       : UInt32;
+    gRemainder   : double;
+    fontTexture  : PSDL_Texture;
+    tiles        : ARRAY[1..MAX_TILES] of PSDL_Texture;
+    pete         : ARRAY[0..1] of PSDL_Texture;
+    music        : PMix_Music;
+    sounds       : Array[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
     player,
-    selv        : PEntity;
+    selv         : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -346,7 +346,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map01.dat');
+  loadMap('data/map06.dat');
 end;
 
 // *****************   Block   ****************
@@ -705,7 +705,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents01.dat');
+  loadEnts('data/ents06.dat');
 end;
 
 // ****************   CAMERA   ****************
