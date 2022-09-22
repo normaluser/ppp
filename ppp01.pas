@@ -197,9 +197,10 @@ end;
 procedure loadMap(filename : string);
 VAR i, x, y, le : integer;
     FileIn : text;
-    line : string;
+    line, a : string;
 begin
   x := 0;
+  a := '';
   assign (FileIn, filename);
   {$i-}; reset(FileIn); {$i+};
   if IOresult = 0 then
@@ -207,14 +208,26 @@ begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
       x := 0;
+      a := '';
       readln(FileIn,line);
-      line := stringReplace(line, ' ','',[rfReplaceAll]);
       le := length(line);
 
       for i := 1 to le do
       begin
-        stage.map[x,y] := ORD(line[i]) - 48;
-        INC(x);
+        if line[i] <> ' ' then
+        begin
+          a := a + line[i];
+          if i = le then
+          begin
+            stage.map[x,y] := strtoint(a);
+          end;
+        end
+        else
+        begin
+          stage.map[x,y] := strtoint(a);
+          INC(x);
+          a := '';
+        end;
       end;
     end;
     close(FileIn);
