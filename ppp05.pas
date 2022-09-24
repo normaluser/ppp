@@ -244,36 +244,35 @@ end;
 procedure loadMap(filename : string);
 VAR i, x, y, le : integer;
     FileIn : text;
-    line, a : string;
+    line : string;
+    a : string[10];
 begin
-  x := 0;
-  a := '';
   assign (FileIn, filename);
   {$i-}; reset(FileIn); {$i+};
   if IOresult = 0 then
   begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
-      x := 0;
-      a := '';
+      x := 0;                     // first tile of the line
+      a := '';                    // new string / number
       readln(FileIn,line);
       le := length(line);
 
-      for i := 1 to le do
+      for i := 1 to le do         // parse through the line
       begin
-        if line[i] <> ' ' then
+        if line[i] <> ' ' then    // if line[i] is a number and not space
         begin
-          a := a + line[i];
-          if i = le then
+          a := a + line[i];       // add number to the other numbers
+          if i = le then          // end of line, so add the last number!
           begin
-            stage.map[x,y] := strtoint(a);
+            stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
           end;
         end
         else
         begin
-          stage.map[x,y] := strtoint(a);
-          INC(x);
-          a := '';
+          stage.map[x,y] := StrToInt(a);    // write number regular
+          INC(x);                           // next tile
+          a := '';                          // new string / number
         end;
       end;
     end;
