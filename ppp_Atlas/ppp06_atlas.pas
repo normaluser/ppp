@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
+* Procedural Parameter for Touch Pizza integerated
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -68,12 +69,13 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
+     TTouch      = Procedure(Wert1 : PEntity);
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy, value : double;
                      w, h, health : integer;
                      isOnGround : Boolean;
                      texture : string; //PSDL_Texture;
-                     touch : boolean;
+                     touch : TTouch;
                      tick : TTick;
                      flags : longint;
                      riding : PEntity;
@@ -139,7 +141,7 @@ procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1; e^.touch := FALSE;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1;
   e^.riding := NIL;    e^.next := NIL;
 end;
 
@@ -439,7 +441,7 @@ end;
 
 // *****************   PIZZA   ****************
 
-procedure touch(other : PEntity);
+procedure touch_Pizza(other : PEntity);
 begin
   if (selv^.health > 0) AND (other = player) then
   begin
@@ -485,7 +487,7 @@ begin
   e^.health := 1;
   e^.flags := EF_WEIGHTLESS;
   e^.tick := @tick_Pizza;
-  e^.touch := TRUE;
+  e^.touch := @touch_Pizza;
 
   INC(stage.pizzaTotal);
 end;
@@ -662,8 +664,8 @@ begin
         other^.y := other^.y + e^.dy;
         push(other, 0, e^.dy);
       end;
-      if e^.touch then
-        touch(other);
+      if assigned(e^.touch) then
+        touch_Pizza(other);
     end;
     other := other^.next;
   end;
@@ -862,7 +864,7 @@ begin
   SDL_RenderFillRect(app.renderer, @r);
   SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
 
-  drawText(SCREEN_WIDTH - 5, 5, 255, 255, 255, TEXT_RIGHT, 'PIZZA ' + intToStr(stage.pizzaFound) + '/' + intToStr(stage.pizzaTotal));
+  drawText(SCREEN_WIDTH - 5, 5, 255, 255, 255, TEXT_RIGHT, 'PIZZA ' + IntToStr(stage.pizzaFound) + '/' + IntToStr(stage.pizzaTotal));
 end;
 
 procedure draw_Game;
