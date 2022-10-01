@@ -50,6 +50,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
 
       GLYPH_WIDTH       = 18;
       GLYPH_HEIGHT      = 29;
+	  
+	  Map_Path          = 'data/map06.dat';
+      Ents_Path         = 'data/ents06.dat';
 
 TYPE                                        { "T" short for "TYPE" }
      TAtlasRec   = record
@@ -370,7 +373,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map06.dat');
+  loadMap(map_Path);
 end;
 
 // *****************   Block   ****************
@@ -737,7 +740,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents06.dat');
+  loadEnts(ents_Path);
 end;
 
 // ****************   CAMERA   ****************

@@ -46,6 +46,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
       EF_PUSH           = (2 << 2);   //8
+	  
+	  Map_Path          = 'data/map05.dat';
+      Ents_Path         = 'data/ents05.dat';
 
 TYPE                                        { "T" short for "TYPE" }
      TAtlasRec   = record
@@ -310,7 +313,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map05.dat');
+  loadMap(map_Path);
 end;
 
 // *****************   Block   ****************
@@ -608,7 +611,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents05.dat');
+  loadEnts(ents_Path);
 end;
 
 // ****************   CAMERA   ****************

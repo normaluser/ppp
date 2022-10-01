@@ -40,6 +40,8 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 6;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
+	  
+	  Map_Path          = 'data/map01.dat';
 
 TYPE                                        { "T" short for "TYPE" }
      TAtlasRec   = record
@@ -266,7 +268,7 @@ end;
 procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
-  loadMap('data/map01.dat');
+  loadMap(map_Path);
 end;
 
 // ***************   ENTITIES   ***************
