@@ -72,8 +72,8 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
-     TTouch      = Procedure(Wert1 : PEntity; VAR Wert2 : PEntity);
-     TTick       = Procedure(VAR Wert2 : PEntity);
+     TTouch      = Procedure(Wert1 : PEntity);
+     TTick       = Procedure;
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy, value : double;
                      w, h, health : integer;
@@ -387,7 +387,7 @@ end;
 
 // ***************   PLATFORM   ***************
 
-procedure tick_Platform(VAR selv : PEntity);
+procedure tick_Platform;
 begin
   if ((abs(selv^.x - selv^.sx) < PLATFORM_SPEED) AND (abs(selv^.y - selv^.sy) < PLATFORM_SPEED)) then
   begin
@@ -428,7 +428,7 @@ end;
 
 // *****************   PIZZA   ****************
 
-procedure touch_Pizza(other : PEntity; VAR selv : PEntity);
+procedure touch_Pizza(other : PEntity);
 begin
   if (selv^.health > 0) AND (other = player) then
   begin
@@ -447,7 +447,7 @@ begin
   end;
 end;
 
-procedure tick_Pizza(VAR selv : PEntity);
+procedure tick_Pizza;
 begin
   if selv^.value > 100 then selv^.value := 0;
   selv^.value := selv^.value + 0.1;
@@ -650,7 +650,7 @@ begin
         push(other, 0, e^.dy);
       end;
       if assigned(e^.touch) then
-        touch_Pizza(other, selv);
+        touch_Pizza(other);
     end;
     other := other^.next;
   end;
@@ -692,7 +692,7 @@ begin
   begin
     selv := e;
     if assigned(e^.tick) then
-      e^.tick(selv);
+      e^.tick;
     move(e);
     if (e^.health <= 0) then
     begin
