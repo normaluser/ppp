@@ -38,7 +38,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-
+	  
+      Map_Path          = 'data/map01.dat';
+   
 TYPE                                        { "T" short for "TYPE" }
      TDelegating = Procedure;
      TDelegate   = RECORD
@@ -238,7 +240,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map01.dat');
+  loadMap(Map_Path);
 end;
 
 // *****************   STAGE   *****************

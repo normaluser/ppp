@@ -44,6 +44,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
 
+      Map_Path          = 'data/map04.dat';
+      Ents_Path         = 'data/ents04.dat';
+
 TYPE                                        { "T" short for "TYPE" }
      TDelegating = Procedure;
      TDelegate   = RECORD
@@ -86,7 +89,7 @@ VAR app        : TApp;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
     pete       : ARRAY[0..1] of PSDL_Texture;
     player,
-    selv       : PEntity;
+ // selv       : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -267,7 +270,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map04.dat');
+  loadMap(map_Path);
 end;
 
 // ***************   ENTITIES   ***************
@@ -456,7 +459,7 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;
+//  selv := e;
     move(e);
     e := e^.next;
   end;
@@ -464,7 +467,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents04.dat');
+  loadEnts(ents_Path);
 end;
 
 // ****************   CAMERA   ****************

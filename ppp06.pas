@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * Procedural Parameter for Touch Pizza integerated
+* Procedural Parameters changed from "global VAR" to funktion parameters
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -50,8 +51,10 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       GLYPH_WIDTH       = 18;
       GLYPH_HEIGHT      = 29;
 
+      Map_Path          = 'data/map06.dat';
+      Ents_Path         = 'data/ents06.dat';
+
 TYPE                                        { "T" short for "TYPE" }
-     TTick       = Procedure;
      TDelegating = Procedure;
      TDelegate   = RECORD
                      logic, draw : TDelegating;
@@ -70,7 +73,8 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
-     TTouch      = Procedure(Wert1 : PEntity);
+     TTouch      = Procedure(Wert1 : PEntity; VAR Wert2 : PEntity);
+     TTick       = Procedure(VAR Wert2 : PEntity);
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy, value : double;
                      w, h, health : integer;
@@ -105,7 +109,7 @@ VAR app          : TApp;
     music        : PMix_Music;
     sounds       : Array[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
     player,
-    selv         : PEntity;
+    selv1        : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -360,7 +364,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map04.dat');
+  loadMap(Map_Path);
 end;
 
 // *****************   Block   ****************
@@ -384,7 +388,7 @@ end;
 
 // ***************   PLATFORM   ***************
 
-procedure tick_Platform;
+procedure tick_Platform(VAR selv : PEntity);
 begin
   if ((abs(selv^.x - selv^.sx) < PLATFORM_SPEED) AND (abs(selv^.y - selv^.sy) < PLATFORM_SPEED)) then
   begin
@@ -425,7 +429,7 @@ end;
 
 // *****************   PIZZA   ****************
 
-procedure touch_Pizza(other : PEntity);
+procedure touch_Pizza(other : PEntity; VAR selv : PEntity);
 begin
   if (selv^.health > 0) AND (other = player) then
   begin
@@ -444,7 +448,7 @@ begin
   end;
 end;
 
-procedure tick_Pizza;
+procedure tick_Pizza(VAR selv : PEntity);
 begin
   if selv^.value > 100 then selv^.value := 0;
   selv^.value := selv^.value + 0.1;
@@ -647,7 +651,7 @@ begin
         push(other, 0, e^.dy);
       end;
       if assigned(e^.touch) then
-        touch_Pizza(other);
+        touch_Pizza(other, selv1);
     end;
     other := other^.next;
   end;
@@ -681,7 +685,7 @@ begin
   push(e, 0, e^.dy);
 end;
 
-procedure doEntities;
+procedure doEntities(VAR selv : PEntity);
 VAR e, prev : PEntity;
 begin
   e := stage.EntityHead^.next;
@@ -689,7 +693,7 @@ begin
   begin
     selv := e;
     if assigned(e^.tick) then
-      e^.tick;
+      e^.tick(selv);
     move(e);
     if (e^.health <= 0) then
     begin
@@ -719,7 +723,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents06.dat');
+  loadEnts(Ents_Path);
 end;
 
 // ****************   CAMERA   ****************
@@ -866,7 +870,7 @@ end;
 procedure logic_Game;
 begin
   doPlayer;
-  doEntities;
+  doEntities(selv1);
   doCamera;
 end;
 

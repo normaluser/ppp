@@ -41,8 +41,10 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_SOLID          = (2 << 1);   //4
       EF_PUSH           = (2 << 2);   //8
 
+      Map_Path          = 'data/map05.dat';
+      Ents_Path         = 'data/ents05.dat';
+
 TYPE                                        { "T" short for "TYPE" }
-     TTick       = Procedure;
      TDelegating = Procedure;
      TDelegate   = RECORD
                      logic, draw : TDelegating;
@@ -61,6 +63,7 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
+     TTick       = Procedure(VAR Wert1 : PEntity);
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy : double;
                      w, h : integer;
@@ -86,7 +89,7 @@ VAR app        : TApp;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
     pete       : ARRAY[0..1] of PSDL_Texture;
     player,
-    selv       : PEntity;
+    selv1      : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -285,7 +288,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map04.dat');
+  loadMap(map_Path);
 end;
 
 // *****************   Block   ****************
@@ -308,7 +311,7 @@ end;
 
 // ***************   PLATFORM   ***************
 
-procedure tick_Platform;
+procedure tick_Platform(VAR selv : PEntity);
 begin
   if ((abs(selv^.x - selv^.sx) < PLATFORM_SPEED) AND (abs(selv^.y - selv^.sy) < PLATFORM_SPEED)) then
   begin
@@ -534,7 +537,7 @@ begin
     e^.dy := MAX(MIN(e^.dy, 18), -999);      { wenn Beschleunigung > 18 dann MAX Beschleunigung = const 18 }
   end;
 
-  if (e^.riding <> NIL) AND (e^.riding^.dy > 0) then   { e^.riding^.dy > 0: es geht abwaertz ! }
+  if (e^.riding <> NIL) AND (e^.riding^.dy > 0) then   { e^.riding^.dy > 0: es geht abwaerts ! }
     e^.dy := e^.riding^.dy + 1;
 
   e^.riding := NIL;
@@ -554,9 +557,9 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;           { wird in tick1 gepraucht um die Plattform zu bewegen }
+    selv1 := e;          { wird in tick1 gebraucht, um die Plattform zu bewegen }
     if assigned(e^.tick) then
-      e^.tick;           { bewege die Plattform }
+      e^.tick(selv1);    { bewege die Plattform }
     move(e);             { bewege das entity }
     e := e^.next;
   end;
@@ -577,7 +580,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents05.dat');
+  loadEnts(ents_Path);
 end;
 
 // ****************   CAMERA   ****************
