@@ -22,6 +22,8 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * Procedural Parameter for Touch Pizza integerated
+* Procedural Parameters changed from "global VAR" to funktion parameters
+* player and selv VAR are changed not to be global
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -72,8 +74,8 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
-     TTouch      = Procedure(Wert1 : PEntity; VAR Wert2 : PEntity);
-     TTick       = Procedure(VAR Wert2 : PEntity);
+     TTouch      = Procedure(Wert1, Wert2, Wert3 : PEntity);
+     TTick       = Procedure(Wert4 : PEntity);
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy, value : double;
                      w, h, health : integer;
@@ -107,8 +109,8 @@ VAR app          : TApp;
     pete         : ARRAY[0..1] of PSDL_Texture;
     music        : PMix_Music;
     sounds       : Array[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
-    player,
-    selv         : PEntity;
+    player1,
+    selv1        : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -139,7 +141,7 @@ begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
 end;
 
-procedure initEntity(VAR e : PEntity);
+procedure initEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
@@ -387,7 +389,7 @@ end;
 
 // ***************   PLATFORM   ***************
 
-procedure tick_Platform(VAR selv : PEntity);
+procedure tick_Platform(selv : PEntity);
 begin
   if ((abs(selv^.x - selv^.sx) < PLATFORM_SPEED) AND (abs(selv^.y - selv^.sy) < PLATFORM_SPEED)) then
   begin
@@ -428,7 +430,7 @@ end;
 
 // *****************   PIZZA   ****************
 
-procedure touch_Pizza(other : PEntity; VAR selv : PEntity);
+procedure touch_Pizza(other, player, selv : PEntity);
 begin
   if (selv^.health > 0) AND (other = player) then
   begin
@@ -447,7 +449,7 @@ begin
   end;
 end;
 
-procedure tick_Pizza(VAR selv : PEntity);
+procedure tick_Pizza(selv : PEntity);
 begin
   if selv^.value > 100 then selv^.value := 0;
   selv^.value := selv^.value + 0.1;
@@ -596,11 +598,11 @@ begin
   end;
 end;
 
-{************** FORWARD Declaration !! ************** }
-procedure push(e : PEntity; dx, dy : double); FORWARD;
-{*****************************************************}
+{********************* FORWARD Declaration !! ********************* }
+procedure push(e, selv, player : PEntity; dx, dy : double); FORWARD;
+{*******************************************************************}
 
-procedure moveToEntities(e : PEntity; dx, dy : double);
+procedure moveToEntities(e, selv, player : PEntity; dx, dy : double);
 VAR other : PEntity;
     adj : integer;
 begin
@@ -644,25 +646,25 @@ begin
       else if (e^.flags AND EF_PUSH) <> 0 then
       begin
         other^.x := other^.x + e^.dx;
-        push(other, e^.dx, 0);
+        push(other, selv, player, e^.dx, 0);
 
         other^.y := other^.y + e^.dy;
-        push(other, 0, e^.dy);
+        push(other, selv, player, 0, e^.dy);
       end;
       if assigned(e^.touch) then
-        touch_Pizza(other, selv);
+        touch_Pizza(other, player, selv);
     end;
     other := other^.next;
   end;
 end;
 
-procedure push(e : PEntity; dx, dy : double);
+procedure push(e, selv, player : PEntity; dx, dy : double);
 begin
   moveToWorld(e, dx, dy);
-  moveToEntities(e, dx, dy);
+  moveToEntities(e, selv, player, dx, dy);
 end;
 
-procedure move(e : PEntity);
+procedure move(e, selv, player : PEntity);
 begin
   if (NOT(e^.flags AND EF_WEIGHTLESS <> 0)) then
   begin
@@ -678,13 +680,13 @@ begin
   e^.isOnGround := FALSE;
 
   e^.x := e^.x + e^.dx;
-  push(e, e^.dx, 0);
+  push(e, selv, player, e^.dx, 0);
 
   e^.y := e^.y + e^.dy;
-  push(e, 0, e^.dy);
+  push(e, selv, player, 0, e^.dy);
 end;
 
-procedure doEntities;
+procedure doEntities(selv, player : PEntity);
 VAR e, prev : PEntity;
 begin
   e := stage.EntityHead^.next;
@@ -693,7 +695,7 @@ begin
     selv := e;
     if assigned(e^.tick) then
       e^.tick(selv);
-    move(e);
+    move(e, selv, player);
     if (e^.health <= 0) then
     begin
       if (e = stage.EntityTail) then
@@ -711,7 +713,7 @@ begin
     if (e^.riding <> NIL) then
     begin
       e^.x := e^.x + e^.riding^.dx;
-      push(e, e^.riding^.dx, 0);
+      push(e, selv, player, e^.riding^.dx, 0);
     end;
 
     e^.x := MIN(MAX(e^.x, 0), (MAP_WIDTH  * TILE_SIZE));
@@ -727,7 +729,7 @@ end;
 
 // ****************   CAMERA   ****************
 
-procedure doCamera;
+procedure doCamera(player : PEntity);
 begin
   stage.camera.x := TRUNC(player^.x + (player^.w / 2));
   stage.camera.y := TRUNC(player^.y + (player^.h / 2));
@@ -739,7 +741,7 @@ begin
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
-procedure doPlayer;
+procedure doPlayer(player : PEntity);
 begin
   player^.dx := 0;
 
@@ -770,7 +772,7 @@ begin
   end;
 end;
 
-procedure initPlayer;
+procedure initPlayer(VAR player : PEntity);
 begin
   NEW(player);
   initEntity(player);
@@ -868,9 +870,9 @@ end;
 
 procedure logic_Game;
 begin
-  doPlayer;
-  doEntities;
-  doCamera;
+  doPlayer(player1);
+  doEntities(selv1, player1);
+  doCamera(player1);
 end;
 
 procedure initStage;
@@ -881,7 +883,7 @@ begin
   stage.entityTail := stage.entityHead;
 
   initEntities;
-  initPlayer;
+  initPlayer(player1);
   initMap;
   app.Delegate.Logic := @logic_Game;
   app.Delegate.Draw  := @draw_Game;
