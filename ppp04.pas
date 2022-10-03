@@ -89,7 +89,7 @@ VAR app        : TApp;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
     pete       : ARRAY[0..1] of PSDL_Texture;
     player,
- // selv       : PEntity;
+    selv       : PEntity;
 
 // *****************   UTIL   *****************
 
