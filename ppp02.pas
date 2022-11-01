@@ -21,6 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
+* without momory holes; testet with: fpc -Criot -gl -gh ppp02.pas
 ***************************************************************************}
 
 PROGRAM ppp02;

@@ -21,6 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
+* without momory holes; testet with: fpc -Criot -gl -gh ppp04.pas
 ***************************************************************************}
 
 PROGRAM ppp04;
@@ -88,8 +89,8 @@ VAR app        : TApp;
     gRemainder : double;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
     pete       : ARRAY[0..1] of PSDL_Texture;
-    player,
-    selv       : PEntity;
+    player     : PEntity;
+ // selv       : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -104,7 +105,7 @@ begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
 end;
 
-procedure InitEntity(VAR e : PEntity);
+procedure InitEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
   e^.isOnGround := FALSE; e^.texture := NIL; e^.flags := EF_NONE; e^.next := NIL;
@@ -602,29 +603,27 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;
