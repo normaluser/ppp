@@ -38,9 +38,9 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-	  
+	
       Map_Path          = 'data/map01.dat';
-   
+
 TYPE                                        { "T" short for "TYPE" }
      TDelegating = Procedure;
      TDelegate   = RECORD
@@ -286,15 +286,14 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
@@ -308,8 +307,8 @@ end;
 procedure atExit;
 VAR i : byte;
 begin
- // for i := 1 to MAX_TILES do
- //   SDL_DestroyTexture (Tiles[i]);
+  for i := 1 to MAX_TILES do
+    SDL_DestroyTexture (Tiles[i]);
 
   if ExitCode <> 0 then cleanUp;
   Mix_CloseAudio;
