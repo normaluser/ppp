@@ -39,7 +39,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-	  
+	
       Map_Path          = 'data/map01.dat';
 
 TYPE                                        { "T" short for "TYPE" }
@@ -349,15 +349,14 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
