@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * Procedural Parameter for Touch Pizza integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp06.pas
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -143,8 +144,8 @@ procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1;
-  e^.texture := NIL;      e^.riding := NIL;    e^.next := NIL;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1; e^.tick := NIL;
+  e^.texture := NIL; e^.riding := NIL; e^.next := NIL; e^.value := 0.0;
 end;
 
 procedure initTexture;
@@ -915,29 +916,27 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;
@@ -1018,7 +1017,7 @@ end;
 // *****************   MAIN   *****************
 
 begin
-  CLRSCR;
+ // CLRSCR;
   initSDL;
   initGame;
   initStage;

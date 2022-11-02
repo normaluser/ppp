@@ -16,6 +16,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Delegate Draw/Logic
+* without momory holes; testet with: fpc -Criot -gl -gh ppp05.pas
 ***************************************************************************}
 
 PROGRAM ppp05;
@@ -63,7 +64,7 @@ TYPE                                        { "T" short for "TYPE" }
                      Delegate : TDelegate;
                    end;
      PEntity     = ^TEntity;
-     TTick       = Procedure(VAR Wert1 : PEntity);
+     TTick       = Procedure(Wert1 : PEntity);
      TEntity     = RECORD
                      x, y, ex, ey, sx, sy, dx, dy : double;
                      w, h : integer;
@@ -120,11 +121,11 @@ begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
 end;
 
-procedure InitEntity(VAR e : PEntity);
+procedure InitEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE;    e^.flags := EF_NONE;
+  e^.isOnGround := FALSE;    e^.flags := EF_NONE; e^.Tick := NIL;
   e^.texture := NIL;         e^.riding := NIL;   e^.next := NIL;
 end;
 
@@ -311,7 +312,7 @@ end;
 
 // ***************   PLATFORM   ***************
 
-procedure tick_Platform(VAR selv : PEntity);
+procedure tick_Platform(selv : PEntity);
 begin
   if ((abs(selv^.x - selv^.sx) < PLATFORM_SPEED) AND (abs(selv^.y - selv^.sy) < PLATFORM_SPEED)) then
   begin
@@ -360,8 +361,7 @@ begin
 end;
 
 procedure addEntFromLine(line : string);
-VAR e : PEntity;
-    namen : string;
+VAR namen : string;
     l : integer;
 begin
   l := SScanf(line, '%s', [@namen]);
@@ -718,29 +718,27 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;
@@ -816,7 +814,7 @@ end;
 // *****************   MAIN   *****************
 
 begin
-  CLRSCR;
+  //CLRSCR;
   initSDL;
   initGame;
   initStage;
