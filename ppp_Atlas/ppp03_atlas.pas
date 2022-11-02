@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp03_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp03;
@@ -513,15 +514,14 @@ begin
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;

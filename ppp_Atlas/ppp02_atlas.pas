@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp02_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp02;

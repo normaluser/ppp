@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp04_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp04;
@@ -44,8 +45,8 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_NONE           = 0;
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
-	  
-	  Map_Path          = 'data/map04.dat';
+	
+      Map_Path          = 'data/map04.dat';
       Ents_Path         = 'data/ents04.dat';
 
 TYPE                                        { "T" short for "TYPE" }
@@ -89,8 +90,7 @@ VAR app        : TApp;
     a          : array[1..max_Tiles] of TAtlasRec;
     atlas_Te   : PSDL_Texture;
     pete       : ARRAY[0..1] of string; //PSDL_Texture;
-    player,
-    selv       : PEntity;
+    player     : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -481,7 +481,6 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;
     move(e);
     e := e^.next;
   end;
@@ -622,15 +621,14 @@ begin
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;

@@ -23,6 +23,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
 * Procedural Parameter for Touch Pizza integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp06_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -50,8 +51,8 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
 
       GLYPH_WIDTH       = 18;
       GLYPH_HEIGHT      = 29;
-	  
-	  Map_Path          = 'data/map06.dat';
+	
+      Map_Path          = 'data/map06.dat';
       Ents_Path         = 'data/ents06.dat';
 
 TYPE                                        { "T" short for "TYPE" }
@@ -144,8 +145,8 @@ procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1;
-  e^.riding := NIL;    e^.next := NIL;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1; e^.value := 0.0;
+  e^.riding := NIL;    e^.next := NIL; e^.tick := NIL;
 end;
 
 procedure getTileInfo(name : string; VAR dest : TSDL_Rect);
@@ -930,15 +931,14 @@ begin
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;

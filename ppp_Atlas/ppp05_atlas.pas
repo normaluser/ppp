@@ -22,6 +22,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * picture atlas integerated
+* without momory holes; testet with: fpc -Criot -gl -gh ppp05_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp05;
@@ -46,8 +47,8 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
       EF_PUSH           = (2 << 2);   //8
-	  
-	  Map_Path          = 'data/map05.dat';
+	
+      Map_Path          = 'data/map05.dat';
       Ents_Path         = 'data/ents05.dat';
 
 TYPE                                        { "T" short for "TYPE" }
@@ -130,7 +131,7 @@ procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE;    e^.flags := EF_NONE;
+  e^.isOnGround := FALSE;    e^.flags := EF_NONE; e^.tick := NIL;
   e^.riding := NIL;   e^.next := NIL;
 end;
 
@@ -747,15 +748,14 @@ begin
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;
