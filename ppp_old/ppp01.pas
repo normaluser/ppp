@@ -270,15 +270,14 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;

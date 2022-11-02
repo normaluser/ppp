@@ -15,6 +15,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to String Types for better String handling!
+* without momory holes; testet with: fpc -Criot -gl -gh ppp05_old.pas
 ***************************************************************************}
 
 PROGRAM ppp05;
@@ -271,7 +272,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map01.dat');
+  loadMap('data/map05.dat');
 end;
 
 // *****************   Block   ****************
@@ -563,7 +564,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents01.dat');
+  loadEnts('data/ents05.dat');
 end;
 
 // ****************   CAMERA   ****************
@@ -699,29 +700,27 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;

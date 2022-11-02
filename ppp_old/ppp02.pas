@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
+* without momory holes; testet with: fpc -Criot -gl -gh ppp02_old.pas
 ***************************************************************************}
 
 PROGRAM ppp02;
@@ -334,15 +335,14 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;

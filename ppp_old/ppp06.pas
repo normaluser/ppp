@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to String Types for better String handling!
+* without momory holes; testet with: fpc -Criot -gl -gh ppp06_old.pas
 ***************************************************************************}
 
 PROGRAM ppp06;
@@ -136,7 +137,7 @@ end;
 procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
-  e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
+  e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0; e^.value := 0.0;
   e^.isOnGround := FALSE;    e^.tick1 := FALSE;  e^.tick2 := FALSE; e^.flags := EF_NONE; e^.health := 1;
   e^.texture := NIL;         e^.riding := NIL;   e^.next := NIL;    e^.touch1 := FALSE;
 end;
@@ -345,7 +346,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap('data/map01.dat');
+  loadMap('data/map06.dat');
 end;
 
 // *****************   Block   ****************
@@ -432,7 +433,7 @@ end;
 
 procedure tick_Pizza;
 begin
-  if selv^.value > 100 then selv^.value := 0;
+  if (selv^.value > 100.0) then selv^.value := 0.0;
   selv^.value := selv^.value + 0.1;
 
   selv^.y := selv^.y + sin(selv^.value);
@@ -456,6 +457,7 @@ begin
   e^.flags := EF_WEIGHTLESS;
   e^.tick2 := TRUE;
   e^.touch1 := TRUE;
+  e^.value := 0.0;
 
   INC(stage.pizzaTotal);
 end;
@@ -705,7 +707,7 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts('data/ents01.dat');
+  loadEnts('data/ents06.dat');
 end;
 
 // ****************   CAMERA   ****************
@@ -896,29 +898,27 @@ begin
 end;
 
 procedure destroyTexture;
-VAR tex : PTextur;
+VAR t, a : PTextur;
 begin
-  tex := app.textureHead^.next;
-  while (tex <> NIL) do
+  a := app.textureHead^.next;
+  while (a <> NIL) do
   begin
-    tex := app.textureHead^.next;
-    app.textureHead^.next := tex^.next;
-    DISPOSE(tex);
-    tex := tex^.next;
+    t := a^.next;
+    DISPOSE(a);
+    a := t;
   end;
   DISPOSE(app.TextureHead);
 end;
 
 procedure destroyEntity;
-VAR ent : PEntity;
+VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
   while (ent <> NIL) do
   begin
-    ent := stage.EntityHead^.next;
-    stage.EntityHead^.next := ent^.next;
+    t := ent^.next;
     DISPOSE(ent);
-    ent := ent^.next;
+    ent := t;
   end;
   DISPOSE(stage.EntityHead);
 end;
@@ -1011,7 +1011,7 @@ end;
 // *****************   MAIN   *****************
 
 begin
-  CLRSCR;
+  //CLRSCR;
   initSDL;
   initGame;
   initStage;
