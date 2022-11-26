@@ -84,8 +84,8 @@ VAR app        : TApp;
     gRemainder : double;
     tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
     pete       : ARRAY[0..1] of PSDL_Texture;
-    player,
-    selv       : PEntity;
+    player     : PEntity;
+ // selv       : PEntity;
 
 // *****************   UTIL   *****************
 
@@ -354,7 +354,7 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;
+    //selv := e;
     move(e);
     e := e^.next;
   end;
@@ -571,13 +571,13 @@ begin
       SDL_MOUSEBUTTONDOWN: exitLoop := TRUE;        { if Mousebutton pressed }
 
       SDL_KEYDOWN: begin
-                     if ((event.key._repeat = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
+                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                        app.keyboard[event.key.keysym.scancode] := 1;
                      if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
                    end;   { SDL_Keydown }
 
       SDL_KEYUP:   begin
-                     if ((event.key._repeat = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
+                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                        app.keyboard[event.key.keysym.scancode] := 0;
                    end;   { SDL_Keyup }
     end;  { CASE event }
