@@ -21,7 +21,8 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to String Types for better String handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
-* Procedural Parameter for Touch Pizza integerated
+* Procedural Parameter for Touch Pizza integrated
+* corrected the sin-function for the pizza
 * without momory holes; testet with: fpc -Criot -gl -gh ppp06.pas
 ***************************************************************************}
 
@@ -450,10 +451,10 @@ end;
 
 procedure tick_Pizza;
 begin
-  if selv^.value > 100 then selv^.value := 0;
+  if selv^.value > 2 * PI then selv^.value := 0.0;
   selv^.value := selv^.value + 0.1;
-
-  selv^.y := selv^.y + sin(selv^.value);
+  // jumping pizza: new y := org y +10 + sin( compete periode Pi )
+  selv^.y := selv^.sy + 10 + 10 * sin(selv^.value);
 end;
 
 procedure initPizza(line : String);
@@ -466,7 +467,7 @@ begin
   stage.EntityTail^.next := e;
   stage.EntityTail := e;
   l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
-  e^.x := a; e^.y := b;
+  e^.x := a; e^.y := b; e^.sy := b;    // sy: helping variable for orginal y value
   e^.texture := loadTexture('gfx/pizza.png');
   SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
 
@@ -986,13 +987,13 @@ begin
       SDL_MOUSEBUTTONDOWN: exitLoop := TRUE;        { if Mousebutton pressed }
 
       SDL_KEYDOWN: begin
-                     if ((event.key._repeat = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
+                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                        app.keyboard[event.key.keysym.scancode] := 1;
                      if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
                    end;   { SDL_Keydown }
 
       SDL_KEYUP:   begin
-                     if ((event.key._repeat = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
+                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                        app.keyboard[event.key.keysym.scancode] := 0;
                    end;   { SDL_Keyup }
     end;  { CASE event }
