@@ -23,6 +23,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
 * Procedural Parameter for Touch Pizza integrated
 * corrected the sin-function for the pizza
+* added SDL_Log Message
 * without momory holes; testet with: fpc -Criot -gl -gh ppp06.pas
 ***************************************************************************}
 
@@ -114,10 +115,17 @@ VAR app          : TApp;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
+end;
+
+procedure logMessage(Message1 : string);
+VAR Fmt : PChar;
+begin
+  Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
+  SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
 end;
 
 procedure calcSlope(x1, y1, x2, y2 : double; VAR dx, dy : double);
@@ -164,11 +172,11 @@ procedure loadSounds;
 VAR i : byte;
 begin
   sounds[ORD(SND_JUMP)] := Mix_LoadWAV('sound/331381__qubodup__public-domain-jump-sound.ogg');
-  if sounds[ORD(SND_JUMP)] = NIL then errorMessage('Soundfile "sound/331381__qubodup__public-domain-jump-sound.ogg" not found!');
+  if sounds[ORD(SND_JUMP)] = NIL then logMessage('"/sound/331381__qubodup__public-domain-jump-sound.ogg"');
   sounds[ORD(SND_PIZZA)] := Mix_LoadWAV('sound/90134__pierrecartoons1979__found-item.ogg');
-  if sounds[ORD(SND_PIZZA)] = NIL then errorMessage('Soundfile "sound/90134__pierrecartoons1979__found-item.ogg" not found!');
+  if sounds[ORD(SND_PIZZA)] = NIL then logMessage('"/sound/90134__pierrecartoons1979__found-item.ogg"');
   sounds[ORD(SND_PIZZA_DONE)] := Mix_LoadWAV('sound/449069__ricniclas__fanfare.ogg');
-  if sounds[ORD(SND_PIZZA_DONE)] = NIL then errorMessage('Soundfile "sound/449069__ricniclas__fanfare.ogg" not found!');
+  if sounds[ORD(SND_PIZZA_DONE)] = NIL then logMessage('"/sound/449069__ricniclas__fanfare.ogg"');
 
   for i := 0 to PRED(ORD(SND_MAX)) do
     Mix_VolumeChunk(sounds[i], MIX_MAX_VOLUME);
@@ -195,7 +203,7 @@ begin
     music := NIL;
   end;
   music := Mix_LoadMUS(PChar(filename));
-  if music = NIL then errorMessage('Music:"' + filename + '" not found!');
+  if music = NIL then logMessage('"/' + filename + '"');
   Mix_VolumeMusic(MIX_MAX_VOLUME);
 end;
 
