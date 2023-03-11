@@ -17,7 +17,6 @@ Windows and Linux:
   [and it's forks on github:  https://github.com/peardox/JsonTools]
 * Lazarus / Freepascal
 * Pascal SDL2 Header files 
-* Game graphics, sounds and the fontfile can be downloaded at https://parallelrealities.itch.io/sdl2-tutorials
 
 a good installation guide for SDL2 and the SDL2-headerfiles can be found at:  https://www.freepascal-meets-sdl.net/
 
