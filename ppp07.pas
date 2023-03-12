@@ -533,7 +533,7 @@ BEGIN
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
   end
-  else errorMessage(filename + ' not found!');
+  else logMessage(filename);
 end;
 
 procedure drawEntities;
@@ -1030,9 +1030,9 @@ end;
 begin
   CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initGame;
   initStage;
-  addExitProc(@atExit);
   exitLoop := FALSE;
 
   while exitLoop = FALSE do
