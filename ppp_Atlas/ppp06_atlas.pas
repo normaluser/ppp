@@ -116,9 +116,9 @@ VAR app         : TApp;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
@@ -549,7 +549,7 @@ BEGIN
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
   end
-  else errorMessage(filename + ' not found!');
+  else logMessage(filename);
 end;
 
 procedure drawEntities;
