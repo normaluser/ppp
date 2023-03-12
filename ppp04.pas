@@ -94,10 +94,17 @@ VAR app        : TApp;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
+end;
+
+procedure logMessage(Message1 : string);
+VAR Fmt : PChar;
+begin
+  Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
+  SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
 end;
 
 function collision(x1, y1, w1, h1, x2, y2, w2, h2 : integer) : Boolean;
@@ -316,7 +323,7 @@ BEGIN
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
   end
-  else errorMessage(filename + ' not found!');
+  else logMessage(filename);
 end;
 
 procedure drawEntities;
@@ -701,9 +708,9 @@ end;
 begin
   CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initGame;
   initStage;
-  addExitProc(@atExit);
   exitLoop := FALSE;
 
   while exitLoop = FALSE do

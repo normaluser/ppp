@@ -100,6 +100,13 @@ begin
   HALT(1);
 end;
 
+procedure logMessage(Message1 : string);
+VAR Fmt : PChar;
+begin
+  Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
+  SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
+end;
+
 procedure calcSlope(x1, y1, x2, y2 : double; VAR dx, dy : double);   { DX=DY => -1 oder 1 }
 VAR steps : integer;
 begin
@@ -390,7 +397,7 @@ BEGIN
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
   end
-  else errorMessage(filename + ' not found!');
+  else logMessage(filename);
 end;
 
 procedure drawEntities;
@@ -816,9 +823,9 @@ end;
 begin
   //CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initGame;
   initStage;
-  addExitProc(@atExit);
   exitLoop := FALSE;
 
   while exitLoop = FALSE do
