@@ -47,7 +47,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
       EF_PUSH           = (2 << 2);   //8
-	
+
       Map_Path          = 'data/map05.dat';
       Ents_Path         = 'data/ents05.dat';
 
@@ -154,9 +154,7 @@ begin
   until (found = TRUE) or (i = Max_Tiles);
 
   if NOT found then
-  begin
     errormessage('Tile info not found!');
-  end;
 
   dest.x := a[i].rec.x;  dest.w := a[i].rec.w;
   dest.y := a[i].rec.y;  dest.h := a[i].rec.h;
@@ -206,7 +204,7 @@ procedure loadTiles;
 VAR i : integer;
     N,C : TJsonNode;
 begin
-  i:=1;
+  i := 1;
   if FileExists('data/atlas.json') then
   begin
     //Get the JSON data
@@ -626,8 +624,8 @@ end;
 
 procedure doCamera;
 begin
-  stage.camera.x := TRUNC(player^.x + (player^.w / 2));
-  stage.camera.y := TRUNC(player^.y + (player^.h / 2));
+  stage.camera.x := TRUNC(player^.x + (player^.w DIV 2));
+  stage.camera.y := TRUNC(player^.y + (player^.h DIV 2));
 
   stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
   stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
@@ -673,13 +671,10 @@ begin
   initEntity(player);
   stage.EntityTail^.next := player;
   stage.EntityTail := player;
-
   pete[0] := 'gfx/pete01.png';
   pete[1] := 'gfx/pete02.png';
-
   player^.texture := pete[0];
   getTileInfo(pete[0], dest);
-
   player^.w := dest.w;
   player^.h := dest.h;
 end;
@@ -838,9 +833,9 @@ end;
 begin
   CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initGame;
   initStage;
-  addExitProc(@atExit);
   exitLoop := FALSE;
 
   while exitLoop = FALSE do

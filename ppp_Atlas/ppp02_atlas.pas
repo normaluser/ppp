@@ -41,8 +41,8 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-	  
-	  Map_Path          = 'data/map01.dat';
+
+      Map_Path          = 'data/map01.dat';
 
 TYPE                                        { "T" short for "TYPE" }
      TAtlasRec   = record
@@ -77,9 +77,9 @@ VAR app        : TApp;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
@@ -121,10 +121,8 @@ begin
 
   dest1.x := a[i].rec.x;  dest1.w := a[i].rec.w;
   dest1.y := a[i].rec.y;  dest1.h := a[i].rec.h;
-  dest2.x := x;
-  dest2.y := y;
-  dest2.w := dest1.w;
-  dest2.h := dest1.h;
+  dest2.x := x;           dest2.w := dest1.w;
+  dest2.y := y;           dest2.h := dest1.h;
 
   if center <> 0 then
   begin
@@ -143,7 +141,7 @@ VAR i, max : integer;
     N,C : TJsonNode;
     dest1 : TSDL_Rect;
 begin
-  i:=1;
+  i := 1;
   if FileExists('data/atlas.json') then
   begin
     //Get the JSON data
@@ -158,13 +156,12 @@ begin
       a[i].rec.w := c.Find('w').AsInteger;
       a[i].rec.h := c.Find('h').AsInteger;
       a[i].rot   := c.Find('rotated').AsInteger;
-
       INC(i);
     end;
     N.free;
   end
   else
-  begin writeln('File not found!'); Halt(1); end;
+  begin writeln('Atlas-Json not found!'); Halt(1); end;
 
   atlas_te := IMG_LoadTexture(app.Renderer, PChar('gfx/atlas.png'));
   if atlas_te = NIL then
@@ -371,8 +368,8 @@ end;
 begin
   CLRSCR;
   initSDL;
-  initMap;
   addExitProc(@atExit);
+  initMap;
   exitLoop := FALSE;
   app.Delegate.Logic := @logic_Game;
   app.Delegate.Draw  := @draw_Game;

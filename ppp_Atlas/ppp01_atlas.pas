@@ -40,7 +40,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-	
+
       Map_Path          = 'data/map01.dat';
 
 TYPE                                  { "T" short for "TYPE" }
@@ -63,21 +63,21 @@ TYPE                                  { "T" short for "TYPE" }
                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
                    end;
 
-VAR app      : TApp;
-    stage    : TStage;
-    event    : TSDL_EVENT;
-    exitLoop : BOOLEAN;
-    gTicks   : UInt32;
+VAR app        : TApp;
+    stage      : TStage;
+    event      : TSDL_EVENT;
+    exitLoop   : BOOLEAN;
+    gTicks     : UInt32;
     gRemainder : double;
-    tiles    : ARRAY[1..MAX_TILES] of string;   //PSDL_Texture;
-    a        : array[1..max_Tiles] of TAtlasRec;
-    atlas_Te : PSDL_Texture;
+    tiles      : ARRAY[1..MAX_TILES] of string;   //PSDL_Texture;
+    a          : array[1..max_Tiles] of TAtlasRec;
+    atlas_Te   : PSDL_Texture;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
@@ -131,9 +131,9 @@ end;
 
 procedure loadTiles;
 VAR i, max : integer;
-    N,C : TJsonNode;
+    N, C : TJsonNode;
 begin
-  i:=1;
+  i := 1;
   if FileExists('data/atlas.json') then
   begin
     //Get the JSON data
@@ -148,7 +148,6 @@ begin
       a[i].rec.w := c.Find('w').AsInteger;
       a[i].rec.h := c.Find('h').AsInteger;
       a[i].rot   := c.Find('rotated').AsInteger;
-
       INC(i);
     end;
     N.free;
@@ -235,7 +234,6 @@ procedure draw_Game;
 begin
   SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
   SDL_RenderFillRect(app.renderer, NIL);
-
   drawMap;
 end;
 
@@ -275,10 +273,10 @@ end;
 
 procedure atExit;
 begin
-  SDL_DestroyTexture (atlas_Te);
+  SDL_DestroyTexture(atlas_Te);
   Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
-  SDL_DestroyWindow (app.Window);
+  SDL_DestroyWindow(app.Window);
   MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
@@ -295,7 +293,7 @@ begin
       SDL_KEYDOWN : begin
                       if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                         app.keyboard[event.key.keysym.scancode] := 1;
-                       if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
+                      if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
                     end;   { SDL_Keydown }
     end; { CASE }
   end;   { IF }
@@ -309,7 +307,7 @@ begin
       SDL_KEYUP : begin
                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
                       app.keyboard[event.key.keysym.scancode] := 0;
-                    end;   { SDL_Keyup }
+                  end;   { SDL_Keyup }
     end; { CASE }
   end;   { IF }
 end;
@@ -350,9 +348,9 @@ end;
 begin
   CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initTexture;
   initMap;
-  addExitProc(@atExit);
   exitLoop := FALSE;
   app.Delegate.Logic := @logic_Game;
   app.Delegate.Draw  := @draw_Game;
