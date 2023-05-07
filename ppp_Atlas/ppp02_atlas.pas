@@ -44,9 +44,10 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       Tex_Path          = 'gfx/atlas.png';
 
 TYPE                                       { "T" short for "TYPE" }
+      String255   = String[255];           { max. length of Path + Filename }
       PAtlasImage = ^TAtlasImage;
       TAtlasImage = RECORD
-                      FNam : string;
+                      FNam : String255;
                       Rec  : TSDL_Rect;
                       rot  : integer;
                       tex  : PSDL_Texture;
@@ -84,13 +85,7 @@ begin
   e^.FNam := ''; e^.rot := 0; e^.Tex := NIL; e^.next := NIL;
 end;
 
-procedure errorMessage(Message1 : string);
-begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
-  HALT(1);
-end;
-
-function TextHash(Value : string) : UInt32;
+function TextHash(Value : String255) : UInt32;
 var i, x, Result : UInt32;
 begin
   Result := 5381;
@@ -103,6 +98,12 @@ begin
     Result := Result and (not x);
   end;
   TextHash := Result;
+end;
+
+procedure errorMessage(Message1 : string);
+begin
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
+  HALT(1);
 end;
 
 // ****************   CAMERA   ****************
@@ -147,7 +148,7 @@ begin
       dest.y := dest.y - (dest.h DIV 2);
     end;
 
-    SDL_RenderCopy(app.Renderer, atlas^.tex, @atlas^.REC, @dest);
+    SDL_RenderCopy(app.Renderer, atlas^.tex, @atlas^.Rec, @dest);
   end
   else
   begin
@@ -160,7 +161,7 @@ begin
     p.y := 0;
     dest.y := dest.y + atlas^.Rec.w;
 
-    SDL_RenderCopyEx(app.Renderer, atlas^.tex, @atlas^.REC, @dest, -90, @p, SDL_FLIP_NONE);
+    SDL_RenderCopyEx(app.Renderer, atlas^.tex, @atlas^.Rec, @dest, -90, @p, SDL_FLIP_NONE);
   end;
 end;
 
@@ -177,7 +178,7 @@ begin
   SDL_RenderPresent(app.Renderer);
 end;
 
-function getAtlasImage(filename : string) : PAtlasImage;
+function getAtlasImage(filename : String255) : PAtlasImage;
 VAR a : PAtlasImage;
     i : UInt32;
 begin
@@ -204,7 +205,7 @@ procedure loadAtlasData;
 VAR i, x, y, w, h, r : integer;
     a, AtlasNew : PAtlasImage;
     N, C : TJsonNode;
-    filename : string;
+    filename : String255;
 begin
   if FileExists(Json_Path) then
   begin
@@ -265,7 +266,7 @@ end;
 
 procedure drawMap;
 VAR x, y, n, x1, x2, y1, y2, mx, my : integer;
-    filename : string;
+    filename : String255;
     atlas : PAtlasImage;
 begin
   x1 := (stage.camera.x MOD TILE_SIZE) * (-1);
@@ -304,10 +305,10 @@ begin
   end;
 end;
 
-procedure loadMap(filename : string);
+procedure loadMap(filename : String255);
 VAR i, x, y, le : integer;
     FileIn : text;
-    line : string;
+    line : String255;
     a : string[10];
 begin
   assign (FileIn, filename);

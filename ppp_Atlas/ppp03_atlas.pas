@@ -19,9 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ***************************************************************************
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
-* changed all PChar to string Types for better string handling!
-* Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
-* picture atlas integrated
+* optimized picture atlas integrated
 * without momory holes; testet with: fpc -Criot -gl -gh ppp03_atlas.pas
 ***************************************************************************}
 
@@ -32,7 +30,6 @@ USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, Jsontools, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
-      MAX_TILES         = 12;              { ALLE !! Bilder!!          }
       TILE_SIZE         = 64;
       MAP_WIDTH         = 40;
       MAP_HEIGHT        = 20;
@@ -41,59 +38,64 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 6;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-
+      NUMATLASBUCKETS   = 20;
       Map_Path          = 'data/map01.dat';
+      Json_Path         = 'data/atlas.json';
+      Tex_Path          = 'gfx/atlas.png';
 
-TYPE                                        { "T" short for "TYPE" }
-     TAtlasRec   = record
-                     Name : string;
-                     Rec  : TSDL_Rect;
-                     rot  : integer;
-                   end;
-     TDelegating = Procedure;
-     TDelegate   = RECORD
-                     logic, draw : TDelegating;
-                   end;
-     TApp        = RECORD
-                     Window   : PSDL_Window;
-                     Renderer : PSDL_Renderer;
-                     keyboard : Array[0..MAX_KEYBOARD_KEYS] OF integer;
-                     Delegate : TDelegate;
-                   end;
-     PEntity     = ^TEntity;
-     TEntity     = RECORD
-                     x, y, dx, dy : double;
-                     w, h : integer;
-                     isOnGround : Boolean;
-                     texture : string;  //PSDL_Texture;
-                     flags : longint;
-                     next : PEntity;
-                   end;
-     TStage      = RECORD
-                     camera : TSDL_Point;
-                     map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
-                     EntityHead, EntityTail : PEntity;
-                   end;
+TYPE                                       { "T" short for "TYPE" }
+      String255   = String[255];           { max. length of Path + Filename }
+      PAtlasImage = ^TAtlasImage;
+      TAtlasImage = RECORD
+                      FNam : String255;
+                      Rec  : TSDL_Rect;
+                      rot  : integer;
+                      tex  : PSDL_Texture;
+                      next : PAtlasImage;
+                    end;
+      TDelegating = Procedure;
+      TDelegate   = RECORD
+                      logic, draw : TDelegating;
+                    end;
+      TApp        = RECORD
+                      Window   : PSDL_Window;
+                      Renderer : PSDL_Renderer;
+                      keyboard : ARRAY[0..MAX_KEYBOARD_KEYS] OF integer;
+                      Delegate : TDelegate;
+                    end;
+      PEntity     = ^TEntity;
+      TEntity     = RECORD
+                      x, y, dx, dy : double;
+                      w, h : integer;
+                      isOnGround : Boolean;
+                      texture : String255;
+                      flags : longint;
+                      next : PEntity;
+                    end;
+      TStage      = RECORD
+                      camera : TSDL_Point;
+                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      EntityHead, EntityTail : PEntity;
+                    end;
+      AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
 
-VAR app        : TApp;
-    stage      : TStage;
-    event      : TSDL_EVENT;
-    exitLoop   : BOOLEAN;
-    gTicks     : UInt32;
-    gRemainder : double;
-    tiles      : ARRAY[1..MAX_TILES] of string; //PSDL_Texture;
-    a          : array[1..max_Tiles] of TAtlasRec;
-    atlas_Te   : PSDL_Texture;
-    pete       : ARRAY[0..1] of string; //PSDL_Texture;
-    player,
-    selv       : PEntity;
+VAR   app         : TApp;
+      stage       : TStage;
+      event       : TSDL_EVENT;
+      exitLoop    : BOOLEAN;
+      gTicks      : UInt32;
+      gRemainder  : double;
+      atlastex    : PSDL_Texture;
+      atlases     : AtlasArr;
+      pete        : ARRAY[0..1] of String255;
+      player,
+      selv        : PEntity;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message1 : string);
+procedure initAtlasImage(VAR e : PAtlasImage);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
-  HALT(1);
+  e^.FNam := ''; e^.rot := 0; e^.Tex := NIL; e^.next := NIL;
 end;
 
 procedure initEntity(VAR e : PEntity);
@@ -102,91 +104,155 @@ begin
   e^.isOnGround := FALSE; e^.next := NIL;
 end;
 
-procedure getTileInfo(name : string; VAR dest : TSDL_Rect);
-var i : integer;
-    found : boolean;
+function TextHash(Value : String255) : UInt32;
+var i, x, Result : UInt32;
 begin
-  i := 0; found := FALSE;
-  repeat
-    INC(i);
-    if name = a[i].name then found := TRUE;
-  until (found = TRUE) or (i = Max_Tiles);
-  if NOT found then
-    errormessage('Tile info not found!');
+  Result := 5381;
+  for i := 1 to Length(Value) do
+  begin
+    Result := (Result shl 5) - Result + Ord(Value[i]);
+    x := Result and $F0000000;
+    if (x <> 0) then
+      Result := Result xor (x shr 24);
+    Result := Result and (not x);
+  end;
+  TextHash := Result;
+end;
 
-  dest.x := a[i].rec.x;  dest.w := a[i].rec.w;
-  dest.y := a[i].rec.y;  dest.h := a[i].rec.h;
+procedure errorMessage(Message1 : String);
+begin
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
+  HALT(1);
 end;
 
 // *****************   DRAW   *****************
 
-procedure blitAtlasImage(name : string; x, y, center : integer);
-VAR dest1, dest2 : TSDL_Rect;
+procedure blitAtlasImage(atlas : PAtlasImage; x, y, center : integer);
+VAR dest : TSDL_Rect;
+    p : TSDL_Point;
 begin
-  getTileInfo(name, dest1);
+  dest.x := x;
+  dest.y := y;
+  dest.w := atlas^.Rec.w;
+  dest.h := atlas^.Rec.h;
 
-  dest2.x := x;
-  dest2.y := y;
-  dest2.w := dest1.w;
-  dest2.h := dest1.h;
-
-  if center <> 0 then
+  if atlas^.rot = 0 then
   begin
-    dest2.x := dest2.w DIV 2;
-    dest2.y := dest2.h DIV 2;
-  end;
+    if center <> 0 then
+    begin
+      dest.x := dest.x - (dest.w DIV 2);
+      dest.y := dest.y - (dest.h DIV 2);
+    end;
 
-  SDL_RenderCopy(app.Renderer, atlas_te, @dest1, @dest2);
+    SDL_RenderCopy(app.Renderer, atlas^.tex, @atlas^.Rec, @dest);
+  end
+  else
+  begin
+    if center <> 0 then
+    begin
+      dest.x := dest.x - (dest.h DIV 2);
+      dest.y := dest.y - (dest.w DIV 2);
+    end;
+    p.x := 0;
+    p.y := 0;
+    dest.y := dest.y + atlas^.Rec.w;
+
+    SDL_RenderCopyEx(app.Renderer, atlas^.tex, @atlas^.Rec, @dest, -90, @p, SDL_FLIP_NONE);
+  end;
 end;
 
 // ****************   TEXTURE   ***************
 
+function getAtlasImage(filename : String255) : PAtlasImage;
+VAR a : PAtlasImage;
+    i : UInt32;
+begin
+  i := TextHash(filename) MOD NUMATLASBUCKETS;
+  a := atlases[i]^.next;
+  getAtlasImage := NIL;
+  while (a <> NIL) do
+  begin
+    if a^.fnam = filename then
+      getAtlasImage := a;
+
+    a := a^.next;
+  end;
+end;
+
 procedure load_Atlas_Graphic;
 begin
-  atlas_te := IMG_LoadTexture(app.Renderer, 'gfx/atlas.png');
-  if atlas_te = NIL then
+  atlastex := IMG_LoadTexture(app.Renderer, Tex_Path);
+  if atlastex = NIL then
     errorMessage(SDL_GetError());
 end;
 
-procedure loadTiles;
-VAR i : integer;
-    N,C : TJsonNode;
-    dest1 : TSDL_Rect;
+procedure loadAtlasData;
+VAR i, x, y, w, h, r : integer;
+    a, AtlasNew : PAtlasImage;
+    N, C : TJsonNode;
+    filename : String255;
 begin
-  i := 1;
-  if FileExists('data/atlas.json') then
+  if FileExists(Json_Path) then
   begin
     //Get the JSON data
     N := TJsonNode.Create;
-    N.LoadFromFile('data/atlas.json');
+    N.LoadFromFile(Json_Path);
 
     for c in n do
     begin
-      a[i].name  := c.Find('filename').AsString;
-      a[i].rec.x := c.Find('x').AsInteger;
-      a[i].rec.y := c.Find('y').AsInteger;
-      a[i].rec.w := c.Find('w').AsInteger;
-      a[i].rec.h := c.Find('h').AsInteger;
-      a[i].rot   := c.Find('rotated').AsInteger;
-      INC(i);
+      filename  := c.Find('filename').AsString;
+      x := c.Find('x').AsInteger;
+      y := c.Find('y').AsInteger;
+      w := c.Find('w').AsInteger;
+      h := c.Find('h').AsInteger;
+      r := c.Find('rotated').AsInteger;
+
+      i := TextHash(filename) MOD NUMATLASBUCKETS;
+
+      a := atlases[i];            //muss vorher schon initialisiert worden sein und gefuellt!!
+
+      while (a^.next <> NIL) do
+        begin a := a^.next; end;
+
+      NEW(AtlasNEW);
+      initAtlasImage(AtlasNEW);
+
+      AtlasNEW^.Fnam := filename;
+      AtlasNEW^.rec.x := x;
+      AtlasNEW^.rec.y := y;
+      AtlasNEW^.rec.w := w;
+      AtlasNEW^.rec.h := h;
+      AtlasNEW^.rot   := r;
+      AtlasNEW^.tex   := atlastex;
+      AtlasNEW^.next  := NIL;
+
+      a^.next := atlasNEW;
     end;
     N.free;
   end
   else
-  begin writeln('JSON-File not found!'); Halt(1); end;
+  begin writeln('Atlas-Json not found!'); Halt(1); end;
 end;
 
-procedure initTexture;
+procedure initAtlas;
+VAR i : integer;
 begin
+  for i := 0 to NUMATLASBUCKETS do
+  begin
+    NEW(atlases[i]);
+    initAtlasImage(atlases[i]);                // PAtlasImage erstellen und initialisieren
+  end;
+
   load_Atlas_Graphic;
-  loadTiles;
+  loadAtlasData;
 end;
 
 // *****************    MAP   *****************
 
 procedure drawMap;
 VAR x, y, n, x1, x2, y1, y2, mx, my : integer;
-    filename : string;
+    filename : String255;
+    atlas : PAtlasImage;
 begin
   x1 := (stage.camera.x MOD TILE_SIZE) * (-1);
   if (x1 = 0) then x2 := x1 + MAP_RENDER_WIDTH * TILE_SIZE
@@ -211,7 +277,8 @@ begin
         if (n > 0) then
         begin
           filename := 'gfx/tile' + IntToStr(n) + '.png';
-          blitAtlasImage(filename, x, y, 0);
+          atlas := getAtlasImage(filename);
+          blitAtlasImage(atlas, x, y, 0);
         end;
       end;
       INC(mx);
@@ -223,10 +290,10 @@ begin
   end;
 end;
 
-procedure loadMap(filename : string);
+procedure loadMap(filename : String255);
 VAR i, x, y, le : integer;
     FileIn : text;
-    line : string;
+    line : String255;
     a : string[10];
 begin
   assign (FileIn, filename);
@@ -235,17 +302,17 @@ begin
   begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
-      x := 0;                     // first tile of the line
-      a := '';                    // new string / number
+      x := 0;                               // first tile of the line
+      a := '';                              // new string / number
       readln(FileIn,line);
       le := length(line);
 
-      for i := 1 to le do         // parse through the line
+      for i := 1 to le do                   // parse through the line
       begin
-        if line[i] <> ' ' then    // if line[i] is a number and not space
+        if line[i] <> ' ' then              // if line[i] is a number and not space
         begin
-          a := a + line[i];       // add number to the other numbers
-          if i = le then          // end of line, so add the last number!
+          a := a + line[i];                 // add number to the other numbers
+          if i = le then                    // end of line, so add the last number!
           begin
             stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
           end;
@@ -367,11 +434,13 @@ end;
 
 procedure drawEntities;
 VAR e : PEntity;
+    atlas : PAtlasImage;
 begin
   e := stage.entityHead^.next;
   while e <> NIL do
   begin
-    blitAtlasImage(e^.texture, round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
+    atlas := getAtlasImage(e^.texture);
+    blitAtlasImage(atlas, Round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
@@ -422,8 +491,7 @@ begin
 end;
 
 procedure initPlayer;
-var i : integer;
-    dest : TSDL_Rect;
+var atlas : PAtlasImage;
 begin
   NEW(player);
   initEntity(player);
@@ -431,10 +499,10 @@ begin
   stage.EntityTail := player;
   pete[0] := 'gfx/pete01.png';
   pete[1] := 'gfx/pete02.png';
+  atlas := getAtlasImage(pete[0]);
   player^.texture := pete[0];
-  getTileInfo(pete[0], dest);
-  player^.w := dest.w;
-  player^.h := dest.h;
+  player^.w := atlas^.Rec.w;
+  player^.h := atlas^.Rec.h;
 end;
 
 procedure prepareScene;
@@ -470,7 +538,6 @@ begin
   NEW(stage.entityHead);
   stage.entityHead^.next := NIL;
   stage.entityTail := stage.entityHead;
-  initTexture;
   initPlayer;
   initMap;
   app.Delegate.Logic := @logic_Game;
@@ -503,6 +570,24 @@ begin
 
   IMG_INIT(IMG_INIT_PNG OR IMG_INIT_JPG);
   SDL_ShowCursor(0);
+  if Exitcode <> 0 then WriteLn(SDL_GetError());
+end;
+
+procedure emptyArray;
+var i : integer;
+    c, b : PAtlasImage;
+begin
+  for i := 0 to NUMATLASBUCKETS do
+  begin
+    c := atlases[i]^.next;    // Dispose the list
+    while (c <> NIL) do
+    begin
+      b := c^.next;
+      DISPOSE(c);
+      c := b;
+    end;
+    DISPOSE(atlases[i]);      // Dispose element / header of the array
+  end;
 end;
 
 procedure destroyEntity;
@@ -530,11 +615,11 @@ end;
 
 procedure atExit;
 begin
-  SDL_DestroyTexture (atlas_Te);
+  SDL_DestroyTexture(atlasTex);
   if ExitCode <> 0 then cleanUp;
   Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
-  SDL_DestroyWindow (app.Window);
+  SDL_DestroyWindow(app.Window);
   MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
@@ -588,7 +673,7 @@ begin
   CLRSCR;
   initSDL;
   addExitProc(@atExit);
-  initGame;
+  initAtlas;
   initStage;
   exitLoop := FALSE;
 
@@ -603,5 +688,6 @@ begin
   end;
 
   cleanUp;
+  emptyArray;
   atExit;
 end.
