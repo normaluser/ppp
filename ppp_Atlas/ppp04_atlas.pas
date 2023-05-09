@@ -54,8 +54,8 @@ TYPE                                       { "T" short for "TYPE" }
       TAtlasImage = RECORD
                       FNam : String255;
                       Rec  : TSDL_Rect;
-                      rot  : integer;
-                      tex  : PSDL_Texture;
+                      Rot  : integer;
+                      Tex  : PSDL_Texture;
                       next : PAtlasImage;
                     end;
       TDelegating = Procedure;
@@ -86,11 +86,11 @@ TYPE                                       { "T" short for "TYPE" }
 
 VAR   app         : TApp;
       stage       : TStage;
-      event       : TSDL_EVENT;
+      event       : TSDL_Event;
       exitLoop    : BOOLEAN;
       gTicks      : UInt32;
       gRemainder  : double;
-      atlastex    : PSDL_Texture;
+      atlasTex    : PSDL_Texture;
       atlases     : AtlasArr;
       pete        : ARRAY[0..1] of String255;
       player      : PEntity;
@@ -99,7 +99,7 @@ VAR   app         : TApp;
 
 procedure initAtlasImage(VAR e : PAtlasImage);
 begin
-  e^.FNam := ''; e^.rot := 0; e^.Tex := NIL; e^.next := NIL;
+  e^.FNam := ''; e^.Rot := 0; e^.Tex := NIL; e^.next := NIL;
 end;
 
 procedure initEntity(VAR e : PEntity);
@@ -108,8 +108,8 @@ begin
   e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.next := NIL;
 end;
 
-function TextHash(Value : String255) : UInt32;
-var i, x, Result : UInt32;
+function HashCode(Value : String255) : UInt32;     // DJB hash function
+VAR i, x, Result : UInt32;                         // slightly modified
 begin
   Result := 5381;
   for i := 1 to Length(Value) do
@@ -120,7 +120,7 @@ begin
       Result := Result xor (x shr 24);
     Result := Result and (not x);
   end;
-  TextHash := Result;
+  HashCode := Result;
 end;
 
 procedure errorMessage(Message1 : String);
@@ -143,6 +143,16 @@ end;
 
 // *****************   DRAW   *****************
 
+procedure blitRect(texture : PSDL_Texture; src : PSDL_Rect; x, y : integer);
+VAR dest : TSDL_Rect;
+begin
+  dest.x := x;
+  dest.y := y;
+  dest.w := src^.w;
+  dest.h := src^.h;
+  SDL_RenderCopy(app.Renderer, texture, src, @dest);
+end;
+
 procedure blitAtlasImage(atlas : PAtlasImage; x, y, center : integer);
 VAR dest : TSDL_Rect;
     p : TSDL_Point;
@@ -152,7 +162,7 @@ begin
   dest.w := atlas^.Rec.w;
   dest.h := atlas^.Rec.h;
 
-  if atlas^.rot = 0 then
+  if atlas^.Rot = 0 then
   begin
     if center <> 0 then
     begin
@@ -160,7 +170,7 @@ begin
       dest.y := dest.y - (dest.h DIV 2);
     end;
 
-    SDL_RenderCopy(app.Renderer, atlas^.tex, @atlas^.Rec, @dest);
+    SDL_RenderCopy(app.Renderer, atlas^.Tex, @atlas^.Rec, @dest);
   end
   else
   begin
@@ -173,8 +183,19 @@ begin
     p.y := 0;
     dest.y := dest.y + atlas^.Rec.w;
 
-    SDL_RenderCopyEx(app.Renderer, atlas^.tex, @atlas^.Rec, @dest, -90, @p, SDL_FLIP_NONE);
+    SDL_RenderCopyEx(app.Renderer, atlas^.Tex, @atlas^.Rec, @dest, -90, @p, SDL_FLIP_NONE);
   end;
+end;
+
+procedure prepareScene;
+begin
+  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
+  SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
 end;
 
 // ****************   TEXTURE   ***************
@@ -183,7 +204,7 @@ function getAtlasImage(filename : String255) : PAtlasImage;
 VAR a : PAtlasImage;
     i : UInt32;
 begin
-  i := TextHash(filename) MOD NUMATLASBUCKETS;
+  i := HashCode(filename) MOD NUMATLASBUCKETS;
   a := atlases[i]^.next;
   getAtlasImage := NIL;
   while (a <> NIL) do
@@ -195,10 +216,10 @@ begin
   end;
 end;
 
-procedure load_Atlas_Graphic;
+procedure loadAtlasTexture;
 begin
-  atlastex := IMG_LoadTexture(app.Renderer, Tex_Path);
-  if atlastex = NIL then
+  atlasTex := IMG_LoadTexture(app.Renderer, Tex_Path);
+  if atlasTex = NIL then
     errorMessage(SDL_GetError());
 end;
 
@@ -223,9 +244,9 @@ begin
       h := c.Find('h').AsInteger;
       r := c.Find('rotated').AsInteger;
 
-      i := TextHash(filename) MOD NUMATLASBUCKETS;
+      i := HashCode(filename) MOD NUMATLASBUCKETS;
 
-      a := atlases[i];            //muss vorher schon initialisiert worden sein und gefuellt!!
+      a := atlases[i];            // must be created and initialized before!
 
       while (a^.next <> NIL) do
         begin a := a^.next; end;
@@ -234,12 +255,12 @@ begin
       initAtlasImage(AtlasNEW);
 
       AtlasNEW^.Fnam := filename;
-      AtlasNEW^.rec.x := x;
-      AtlasNEW^.rec.y := y;
-      AtlasNEW^.rec.w := w;
-      AtlasNEW^.rec.h := h;
-      AtlasNEW^.rot   := r;
-      AtlasNEW^.tex   := atlastex;
+      AtlasNEW^.Rec.x := x;
+      AtlasNEW^.Rec.y := y;
+      AtlasNEW^.Rec.w := w;
+      AtlasNEW^.Rec.h := h;
+      AtlasNEW^.Rot   := r;
+      AtlasNEW^.Tex   := atlasTex;
       AtlasNEW^.next  := NIL;
 
       a^.next := atlasNEW;
@@ -247,7 +268,7 @@ begin
     N.free;
   end
   else
-  begin writeln('Atlas-Json not found!'); Halt(1); end;
+  errorMessage('Atlas-Json not found!');
 end;
 
 procedure initAtlas;
@@ -256,10 +277,10 @@ begin
   for i := 0 to NUMATLASBUCKETS do
   begin
     NEW(atlases[i]);
-    initAtlasImage(atlases[i]);                // PAtlasImage erstellen und initialisieren
+    initAtlasImage(atlases[i]);                // create and initialize PAtlasImage
   end;
 
-  load_Atlas_Graphic;
+  loadAtlasTexture;
   loadAtlasData;
 end;
 
@@ -308,9 +329,9 @@ end;
 
 procedure loadMap(filename : String255);
 VAR i, x, y, le : integer;
-    FileIn : text;
+    FileIn : Text;
     line : String255;
-    a : string[10];
+    a : String[10];
 begin
   assign (FileIn, filename);
   {$i-}; reset(FileIn); {$i+};
@@ -348,7 +369,7 @@ end;
 
 procedure initMap;
 begin
-  FillChar(stage.map, sizeof(stage.map), 0);
+  FillChar(stage.map, SizeOf(stage.map), 0);
   loadMap(map_Path);
 end;
 
@@ -377,8 +398,8 @@ begin
     e^.x := a; e^.y := b;
     e^.texture := 'gfx/block.png';
     atlas := getAtlasImage(e^.texture);
-    e^.w := atlas^.rec.w;
-    e^.h := atlas^.rec.h;
+    e^.w := atlas^.Rec.w;
+    e^.h := atlas^.Rec.h;
     e^.flags := EF_SOLID + EF_WEIGHTLESS;
   end;
 end;
@@ -595,7 +616,7 @@ begin
 end;
 
 procedure initPlayer;
-var atlas : PAtlasImage;
+VAR atlas : PAtlasImage;
 begin
   NEW(player);
   initEntity(player);
@@ -607,17 +628,6 @@ begin
   player^.texture := pete[0];
   player^.w := atlas^.Rec.w;
   player^.h := atlas^.Rec.h;
-end;
-
-procedure prepareScene;
-begin
-  SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
-  SDL_RenderClear(app.Renderer);
-end;
-
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
 end;
 
 // *****************   STAGE   *****************
@@ -680,7 +690,7 @@ begin
 end;
 
 procedure emptyArray;
-var i : integer;
+VAR i : integer;
     c, b : PAtlasImage;
 begin
   for i := 0 to NUMATLASBUCKETS do
@@ -696,7 +706,7 @@ begin
   end;
 end;
 
-procedure destroyEntity;
+procedure cleanUp;
 VAR t, ent : PEntity;
 begin
   ent := stage.EntityHead^.next;
@@ -707,11 +717,6 @@ begin
     ent := t;
   end;
   DISPOSE(stage.EntityHead);
-end;
-
-procedure cleanUp;
-begin
-  destroyEntity;
   if ExitCode <> 0 then WriteLn('CleanUp complete!');
 end;
 

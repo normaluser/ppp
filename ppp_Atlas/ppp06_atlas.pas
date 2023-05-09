@@ -19,12 +19,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ***************************************************************************
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
-* changed all PChar to String Types for better String handling!
+* changed all PChar to string Types for better string handling!
 * Procedural Parameters for Tick (Platform/Pizza) and Delegate (Draw/Logic)
-* picture atlas integrated
+* optimized picture atlas integrated
 * Procedural Parameter for Touch Pizza integrated
 * corrected the sin-function for the pizza
 * added SDL_Log Message
+* Line: 795 prev repaired
 * without momory holes; testet with: fpc -Criot -gl -gh ppp06_atlas.pas
 ***************************************************************************}
 
@@ -35,7 +36,6 @@ USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, JsonTools, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
-      MAX_TILES         = 12;
       TILE_SIZE         = 64;
       MAP_WIDTH         = 40;
       MAP_HEIGHT        = 20;
@@ -43,86 +43,120 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       PLAYER_MOVE_SPEED = 6;
       PLATFORM_SPEED    = 4;
-
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
+      NUMATLASBUCKETS   = 20;
       EF_NONE           = 0;
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
       EF_PUSH           = (2 << 2);   //8
-
       GLYPH_WIDTH       = 18;
       GLYPH_HEIGHT      = 29;
 
       Map_Path          = 'data/map06.dat';
       Ents_Path         = 'data/ents06.dat';
+      Json_Path         = 'data/atlas.json';
+      Tex_Path          = 'gfx/atlas.png';
+      Font_Path         = 'gfx/font.png';
 
-TYPE                                        { "T" short for "TYPE" }
-     TAtlasRec   = record
-                     Name : string;
-                     Rec  : TSDL_Rect;
-                     rot  : integer;
-                   end;
-     TTick       = Procedure;
-     TDelegating = Procedure;
-     TDelegate   = RECORD
-                     logic, draw : TDelegating;
-                   end;
-     TApp        = RECORD
-                     Window   : PSDL_Window;
-                     Renderer : PSDL_Renderer;
-                     keyboard : Array[0..MAX_KEYBOARD_KEYS] OF integer;
-                     Delegate : TDelegate;
-                   end;
-     PEntity     = ^TEntity;
-     TTouch      = Procedure(Wert1 : PEntity);
-     TEntity     = RECORD
-                     x, y, ex, ey, sx, sy, dx, dy, value : double;
-                     w, h, health : integer;
-                     isOnGround : Boolean;
-                     texture : string; //PSDL_Texture;
-                     touch : TTouch;
-                     tick : TTick;
-                     flags : longint;
-                     riding : PEntity;
-                     next : PEntity;
-                   end;
-     TStage      = RECORD
-                     camera : TSDL_Point;
-                     map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
-                     EntityHead, EntityTail : PEntity;
-                     pizzaTotal, pizzaFound : integer;
-                   end;
+TYPE                                       { "T" short for "TYPE" }
+      String255   = String[255];           { max. length of Path + Filename }
+      PAtlasImage = ^TAtlasImage;
+      TAtlasImage = RECORD
+                      FNam : String255;
+                      Rec  : TSDL_Rect;
+                      Rot  : integer;
+                      Tex  : PSDL_Texture;
+                      next : PAtlasImage;
+                    end;
+      TTick       = Procedure;
+      TDelegating = Procedure;
+      TDelegate   = RECORD
+                      logic, draw : TDelegating;
+                    end;
+      TApp        = RECORD
+                      Window   : PSDL_Window;
+                      Renderer : PSDL_Renderer;
+                      keyboard : ARRAY[0..MAX_KEYBOARD_KEYS] OF integer;
+                      Delegate : TDelegate;
+                    end;
+      PEntity     = ^TEntity;
+      TTouch      = Procedure(Wert1 : PEntity);
+      TEntity     = RECORD
+                      x, y, ex, ey, sx, sy, dx, dy, value : double;
+                      w, h, health : integer;
+                      isOnGround : Boolean;
+                      texture : String255;
+                      touch : TTouch;
+                      tick : TTick;
+                      flags : longint;
+                      riding : PEntity;
+                      next : PEntity;
+                    end;
+      TStage      = RECORD
+                      camera : TSDL_Point;
+                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      EntityHead, EntityTail : PEntity;
+                      pizzaTotal, pizzaFound : integer;
+                    end;
+      AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
 
-     TAlignment = (TEXT_LEFT, TEXT_CENTER, TEXT_RIGHT);
-     TSound     = (SND_JUMP, SND_PIZZA,	SND_PIZZA_DONE,	SND_MAX);
-     TChannel   = (CH_PLAYER, CH_PIZZA);
+      TAlignment  = (TEXT_LEFT, TEXT_CENTER, TEXT_RIGHT);
+      TSound      = (SND_JUMP, SND_PIZZA,	SND_PIZZA_DONE,	SND_MAX);
+      TChannel    = (CH_PLAYER, CH_PIZZA);
 
-VAR app         : TApp;
-    stage       : TStage;
-    event       : TSDL_EVENT;
-    exitLoop    : BOOLEAN;
-    gTicks      : UInt32;
-    gRemainder  : double;
-    fontTexture : PSDL_Texture;
-    tiles       : ARRAY[1..MAX_TILES] of string; //PSDL_Texture;
-    a           : array[1..max_Tiles] of TAtlasRec;
-    atlas_Te    : PSDL_Texture;
-    pete        : ARRAY[0..1] of string; //PSDL_Texture;
-    music       : PMix_Music;
-    sounds      : Array[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
-    player,
-    selv        : PEntity;
+VAR   app         : TApp;
+      stage       : TStage;
+      event       : TSDL_Event;
+      exitLoop    : BOOLEAN;
+      gTicks      : UInt32;
+      gRemainder  : double;
+      fontTexture : PSDL_Texture;
+      atlasTex    : PSDL_Texture;
+      atlases     : AtlasArr;
+      pete        : ARRAY[0..1] of String255;
+      music       : PMix_Music;
+      sounds      : ARRAY[0..PRED(ORD(SND_MAX))] OF PMix_Chunk;
+      player,
+      selv        : PEntity;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message1 : string);
+procedure initAtlasImage(VAR e : PAtlasImage);
+begin
+  e^.FNam := ''; e^.Rot := 0; e^.Tex := NIL; e^.next := NIL;
+end;
+
+procedure initEntity(VAR e : PEntity);
+begin
+  e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
+  e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1; e^.value := 0.0;
+  e^.riding := NIL;    e^.next := NIL; e^.tick := NIL;
+end;
+
+function HashCode(Value : String255) : UInt32;     // DJB hash function
+VAR i, x, Result : UInt32;                         // slightly modified
+begin
+  Result := 5381;
+  for i := 1 to Length(Value) do
+  begin
+    Result := (Result shl 5) - Result + Ord(Value[i]);
+    x := Result and $F0000000;
+    if (x <> 0) then
+      Result := Result xor (x shr 24);
+    Result := Result and (not x);
+  end;
+  HashCode := Result;
+end;
+
+procedure errorMessage(Message1 : String);
 begin
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
-procedure logMessage(Message1 : string);
+procedure logMessage(Message1 : String);
 VAR Fmt : PChar;
 begin
   Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
@@ -148,34 +182,6 @@ end;
 function collision(x1, y1, w1, h1, x2, y2, w2, h2 : integer) : Boolean;
 begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
-end;
-
-procedure initEntity(VAR e : PEntity);
-begin
-  e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
-  e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.health := 1; e^.value := 0.0;
-  e^.riding := NIL;    e^.next := NIL; e^.tick := NIL;
-end;
-
-procedure getTileInfo(name : string; VAR dest : TSDL_Rect);
-var i : integer;
-    found : boolean;
-begin
-  i := 0;
-  found := FALSE;
-  repeat
-    INC(i);
-    if name = a[i].name then found := TRUE;
-  until (found = TRUE) or (i = Max_Tiles);
-
-  if NOT found then
-  begin
-    errorMessage('Tile info not found!');
-  end;
-
-  dest.x := a[i].rec.x;  dest.w := a[i].rec.w;
-  dest.y := a[i].rec.y;  dest.h := a[i].rec.h;
 end;
 
 // *****************   SOUND   ****************
@@ -227,25 +233,6 @@ end;
 
 // *****************   DRAW   *****************
 
-procedure blitAtlasImage(name : string; x, y, center : integer);
-VAR dest1, dest2 : TSDL_Rect;
-begin
-  getTileInfo(name, dest1);
-
-  dest2.x := x;
-  dest2.y := y;
-  dest2.w := dest1.w;
-  dest2.h := dest1.h;
-
-  if center <> 0 then
-  begin
-    dest2.x := dest2.w DIV 2;
-    dest2.y := dest2.h DIV 2;
-  end;
-
-  SDL_RenderCopy(app.Renderer, atlas_te, @dest1, @dest2);
-end;
-
 procedure blitRect(texture : PSDL_Texture; src : PSDL_Rect; x, y : integer);
 VAR dest : TSDL_Rect;
 begin
@@ -256,53 +243,143 @@ begin
   SDL_RenderCopy(app.Renderer, texture, src, @dest);
 end;
 
+procedure blitAtlasImage(atlas : PAtlasImage; x, y, center : integer);
+VAR dest : TSDL_Rect;
+    p : TSDL_Point;
+begin
+  dest.x := x;
+  dest.y := y;
+  dest.w := atlas^.Rec.w;
+  dest.h := atlas^.Rec.h;
+
+  if atlas^.Rot = 0 then
+  begin
+    if center <> 0 then
+    begin
+      dest.x := dest.x - (dest.w DIV 2);
+      dest.y := dest.y - (dest.h DIV 2);
+    end;
+
+    SDL_RenderCopy(app.Renderer, atlas^.Tex, @atlas^.Rec, @dest);
+  end
+  else
+  begin
+    if center <> 0 then
+    begin
+      dest.x := dest.x - (dest.h DIV 2);
+      dest.y := dest.y - (dest.w DIV 2);
+    end;
+    p.x := 0;
+    p.y := 0;
+    dest.y := dest.y + atlas^.Rec.w;
+
+    SDL_RenderCopyEx(app.Renderer, atlas^.Tex, @atlas^.Rec, @dest, -90, @p, SDL_FLIP_NONE);
+  end;
+end;
+
+procedure prepareScene;
+begin
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
+end;
+
 // ****************   TEXTURE   ***************
 
-procedure load_Atlas_Graphic;
+function getAtlasImage(filename : String255) : PAtlasImage;
+VAR a : PAtlasImage;
+    i : UInt32;
 begin
-  atlas_te := IMG_LoadTexture(app.Renderer, 'gfx/atlas.png');
-  if atlas_te = NIL then
+  i := HashCode(filename) MOD NUMATLASBUCKETS;
+  a := atlases[i]^.next;
+  getAtlasImage := NIL;
+  while (a <> NIL) do
+  begin
+    if a^.fnam = filename then
+      getAtlasImage := a;
+
+    a := a^.next;
+  end;
+end;
+
+procedure loadAtlasTexture;
+begin
+  atlasTex := IMG_LoadTexture(app.Renderer, Tex_Path);
+  if atlasTex = NIL then
     errorMessage(SDL_GetError());
 end;
 
-procedure loadTiles;
-VAR i : integer;
-    N,C : TJsonNode;
+procedure loadAtlasData;
+VAR i, x, y, w, h, r : integer;
+    a, AtlasNew : PAtlasImage;
+    N, C : TJsonNode;
+    filename : String255;
 begin
-  i := 1;
-  if FileExists('data/atlas.json') then
+  if FileExists(Json_Path) then
   begin
     //Get the JSON data
     N := TJsonNode.Create;
-    N.LoadFromFile('data/atlas.json');
+    N.LoadFromFile(Json_Path);
 
     for c in n do
     begin
-      a[i].name  := c.Find('filename').AsString;
-      a[i].rec.x := c.Find('x').AsInteger;
-      a[i].rec.y := c.Find('y').AsInteger;
-      a[i].rec.w := c.Find('w').AsInteger;
-      a[i].rec.h := c.Find('h').AsInteger;
-      a[i].rot   := c.Find('rotated').AsInteger;
-      INC(i);
+      filename  := c.Find('filename').AsString;
+      x := c.Find('x').AsInteger;
+      y := c.Find('y').AsInteger;
+      w := c.Find('w').AsInteger;
+      h := c.Find('h').AsInteger;
+      r := c.Find('rotated').AsInteger;
+
+      i := HashCode(filename) MOD NUMATLASBUCKETS;
+
+      a := atlases[i];            // must be created and initialized before!
+
+      while (a^.next <> NIL) do
+        begin a := a^.next; end;
+
+      NEW(AtlasNEW);
+      initAtlasImage(AtlasNEW);
+
+      AtlasNEW^.Fnam := filename;
+      AtlasNEW^.Rec.x := x;
+      AtlasNEW^.Rec.y := y;
+      AtlasNEW^.Rec.w := w;
+      AtlasNEW^.Rec.h := h;
+      AtlasNEW^.Rot   := r;
+      AtlasNEW^.Tex   := atlasTex;
+      AtlasNEW^.next  := NIL;
+
+      a^.next := atlasNEW;
     end;
     N.free;
   end
   else
-  begin writeln('JSON-File not found!'); Halt(1); end;
+  errorMessage('Atlas-Json not found!');
 end;
 
-procedure initTexture;
+procedure initAtlas;
+VAR i : integer;
 begin
-  load_Atlas_Graphic;
-  loadTiles;
+  for i := 0 to NUMATLASBUCKETS do
+  begin
+    NEW(atlases[i]);
+    initAtlasImage(atlases[i]);                // create and initialize PAtlasImage
+  end;
+
+  loadAtlasTexture;
+  loadAtlasData;
 end;
 
 // *****************    MAP   *****************
 
 procedure drawMap;
 VAR x, y, n, x1, x2, y1, y2, mx, my : integer;
-    filename : string;
+    filename : String255;
+    atlas : PAtlasImage;
 begin
   x1 := (stage.camera.x MOD TILE_SIZE) * (-1);
   if (x1 = 0) then x2 := x1 + MAP_RENDER_WIDTH * TILE_SIZE
@@ -327,7 +404,8 @@ begin
         if (n > 0) then
         begin
           filename := 'gfx/tile' + IntToStr(n) + '.png';
-          blitAtlasImage(filename, x, y, 0);
+          atlas := getAtlasImage(filename);
+          blitAtlasImage(atlas, x, y, 0);
         end;
       end;
       INC(mx);
@@ -339,11 +417,11 @@ begin
   end;
 end;
 
-procedure loadMap(filename : string);
+procedure loadMap(filename : String255);
 VAR i, x, y, le : integer;
-    FileIn : text;
-    line : string;
-    a : string[10];
+    FileIn : Text;
+    line : String255;
+    a : String[10];
 begin
   assign (FileIn, filename);
   {$i-}; reset(FileIn); {$i+};
@@ -351,17 +429,17 @@ begin
   begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
-      x := 0;                     // first tile of the line
-      a := '';                    // new string / number
+      x := 0;                               // first tile of the line
+      a := '';                              // new String / number
       readln(FileIn,line);
       le := length(line);
 
-      for i := 1 to le do         // parse through the line
+      for i := 1 to le do                   // parse through the line
       begin
-        if line[i] <> ' ' then    // if line[i] is a number and not space
+        if line[i] <> ' ' then              // if line[i] is a number and not space
         begin
-          a := a + line[i];       // add number to the other numbers
-          if i = le then          // end of line, so add the last number!
+          a := a + line[i];                 // add number to the other numbers
+          if i = le then                    // end of line, so add the last number!
           begin
             stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
           end;
@@ -370,7 +448,7 @@ begin
         begin
           stage.map[x,y] := StrToInt(a);    // write number regular
           INC(x);                           // next tile
-          a := '';                          // new string / number
+          a := '';                          // new String / number
         end;
       end;
     end;
@@ -381,18 +459,17 @@ end;
 
 procedure initMap;
 begin
-  FillChar(stage.map, sizeof(stage.map), 0);
-  loadTiles;
+  FillChar(stage.map, SizeOf(stage.map), 0);
   loadMap(Map_Path);
 end;
 
 // *****************   Block   ****************
 
-procedure initBlock(line : string);
+procedure initBlock(line : String);
 VAR e : PEntity;
-    namen : string;
+    namen : String;
     l, a, b : integer;
-    dest : TSDL_Rect;
+    atlas : PAtlasImage;
 begin
   NEW(e);
   initEntity(e);
@@ -401,10 +478,11 @@ begin
   l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
   e^.x := a; e^.y := b;
   e^.texture := 'gfx/block.png';
-  getTileInfo(e^.texture, dest);
-  e^.w := dest.w;
-  e^.h := dest.h;
+  atlas := getAtlasImage(e^.texture);
+  e^.w := atlas^.Rec.w;
+  e^.h := atlas^.Rec.h;
   e^.health := 1;   // warum?? wurde doch initialisiert ?!
+  e^.touch := NIL;
   e^.flags := EF_SOLID + EF_WEIGHTLESS;
 end;
 
@@ -427,11 +505,11 @@ begin
   end;
 end;
 
-procedure initPlatform(line : string);
+procedure initPlatform(line : String);
 VAR e : PEntity;
-    namen : string;
+    namen : String;
     l, a, b, c, d : integer;
-    dest : TSDL_Rect;
+    atlas : PAtlasImage;
 begin
   NEW(e);
   initEntity(e);
@@ -445,10 +523,11 @@ begin
   e^.y := e^.sy;
   e^.tick := @tick_Platform;
   e^.texture := 'gfx/platform.png';
-  getTileInfo(e^.texture, dest);
-  e^.w := dest.w;
-  e^.h := dest.h;
+  atlas := getAtlasImage(e^.texture);
+  e^.w := atlas^.Rec.w;
+  e^.h := atlas^.Rec.h;
   e^.health := 1;   // Warum????
+  e^.touch := NIL;
   e^.flags := EF_SOLID + EF_WEIGHTLESS + EF_PUSH;
 end;
 
@@ -483,9 +562,9 @@ end;
 
 procedure initPizza(line : String);
 VAR e : PEntity;
-    namen : string;
+    namen : String;
     l, a, b : integer;
-    dest : TSDL_Rect;
+    atlas : PAtlasImage;
 begin
   NEW(e);
   initEntity(e);
@@ -494,9 +573,9 @@ begin
   l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
   e^.x := a; e^.y := b; e^.sy := b;    // sy: helping variable for orginal y value
   e^.texture := 'gfx/pizza.png';
-  getTileInfo(e^.texture, dest);
-  e^.w := dest.w;
-  e^.h := dest.h;
+  atlas := getAtlasImage(e^.texture);
+  e^.w := atlas^.Rec.w;
+  e^.h := atlas^.Rec.h;
   e^.health := 1;
   e^.flags := EF_WEIGHTLESS;
   e^.tick := @tick_Pizza;
@@ -514,9 +593,8 @@ begin
     else isInsideMap := FALSE;
 end;
 
-procedure addEntFromLine(line : string);
-VAR e : PEntity;
-    namen : string;
+procedure addEntFromLine(line : String);
+VAR namen : String;
     l : integer;
 begin
   l := SScanf(line, '%s', [@namen]);
@@ -535,9 +613,9 @@ begin
   else errorMessage(('unknown entity: ' + namen));
 end;
 
-procedure loadEnts(filename : string);
+procedure loadEnts(filename : String);
 VAR Datei: Text;               (* Dateizeiger *)
-    zeile : string;
+    zeile : String;
 BEGIN
   assign (Datei, filename);    (* Pfad festlegen *)
   {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
@@ -554,11 +632,13 @@ end;
 
 procedure drawEntities;
 VAR e : PEntity;
+    atlas : PAtlasImage;
 begin
   e := stage.entityHead^.next;
   while e <> NIL do
   begin
-    blitAtlasImage(e^.texture, TRUNC(e^.x - stage.camera.x), TRUNC(e^.y - stage.camera.y), 0);
+    atlas := getAtlasImage(e^.texture);
+    blitAtlasImage(atlas, Round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
@@ -694,11 +774,11 @@ procedure move(e : PEntity);
 begin
   if (NOT(e^.flags AND EF_WEIGHTLESS <> 0)) then
   begin
-    e^.dy := e^.dy + 1.5;
-    e^.dy := MAX(MIN(e^.dy, 18), -999);
+    e^.dy := e^.dy + 1.5;                    { "beschleunige" um 1.5 }
+    e^.dy := MAX(MIN(e^.dy, 18), -999);      { wenn Beschleunigung > 18 dann MAX Beschleunigung = const 18 }
   end;
 
-  if (e^.riding <> NIL) AND (e^.riding^.dy > 0) then
+  if (e^.riding <> NIL) AND (e^.riding^.dy > 0) then   { e^.riding^.dy > 0: es geht abwaerts ! }
     e^.dy := e^.riding^.dy + 1;
 
   e^.riding := NIL;
@@ -713,15 +793,16 @@ begin
 end;
 
 procedure doEntities;
-VAR e, prev : PEntity;
+VAR e, prev : PEntity;             // prev fehlerhaft??  wo wird initialisiert mit dem Vorgaenger?
 begin
+  prev := stage.EntityHead;        //hier hats gefehlt!!  FEHLER!!??
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;
+    selv := e;           { wird in tick1 gepraucht um die Plattform zu bewegen }
     if assigned(e^.tick) then
-      e^.tick;
-    move(e);
+      e^.tick;           { bewege die Plattform }
+    move(e);             { bewege das entity }
     if (e^.health <= 0) then
     begin
       if (e = stage.EntityTail) then
@@ -799,7 +880,7 @@ begin
 end;
 
 procedure initPlayer;
-var dest : TSDL_Rect;
+VAR atlas : PAtlasImage;
 begin
   NEW(player);
   initEntity(player);
@@ -807,22 +888,11 @@ begin
   stage.EntityTail := player;
   pete[0] := 'gfx/pete01.png';
   pete[1] := 'gfx/pete02.png';
+  atlas := getAtlasImage(pete[0]);
   player^.texture := pete[0];
-  getTileInfo(pete[0], dest);
-  player^.w := dest.w;
-  player^.h := dest.h;
+  player^.w := atlas^.Rec.w;
+  player^.h := atlas^.Rec.h;
   player^.health := 1;
-end;
-
-procedure prepareScene;
-begin
-  //SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
-  SDL_RenderClear(app.Renderer);
-end;
-
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
 end;
 
 // *****************   TEXT   *****************
@@ -855,7 +925,7 @@ end;
 
 procedure initFonts;
 begin
-  fontTexture := IMG_loadTexture(app.Renderer, 'gfx/font.png');
+  fontTexture := IMG_loadTexture(app.Renderer, Font_Path);
   if fontTexture = NIL then
     errorMessage(SDL_GetError());
 end;
@@ -901,7 +971,7 @@ begin
   initEntity(stage.entityHead);
   stage.entityHead^.next := NIL;
   stage.entityTail := stage.entityHead;
-
+  initAtlas;
   initEntities;
   initPlayer;
   initMap;
@@ -935,6 +1005,24 @@ begin
 
   IMG_INIT(IMG_INIT_PNG OR IMG_INIT_JPG);
   SDL_ShowCursor(0);
+  if Exitcode <> 0 then WriteLn(SDL_GetError());
+end;
+
+procedure emptyArray;
+VAR i : integer;
+    c, b : PAtlasImage;
+begin
+  for i := 0 to NUMATLASBUCKETS do
+  begin
+    c := atlases[i]^.next;    // Dispose the list
+    while (c <> NIL) do
+    begin
+      b := c^.next;
+      DISPOSE(c);
+      c := b;
+    end;
+    DISPOSE(atlases[i]);      // Dispose element / header of the array
+  end;
 end;
 
 procedure destroyEntity;
@@ -953,12 +1041,13 @@ end;
 procedure cleanUp;
 begin
   destroyEntity;
+  //emptyArray;
   if ExitCode <> 0 then WriteLn('CleanUp complete!');
 end;
 
 procedure initGame;
 begin
-  initTexture;
+  initAtlas;
   initFonts;
   initSounds;
   loadMusic('music/one_0.mp3');
@@ -966,14 +1055,13 @@ begin
 end;
 
 procedure atExit;
-VAR i : byte;
 begin
-  SDL_DestroyTexture (atlas_Te);
-  SDL_DestroyTexture (fontTexture);
+  SDL_DestroyTexture(atlasTex);
+  SDL_DestroyTexture(fontTexture);
   if ExitCode <> 0 then cleanUp;
   Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
-  SDL_DestroyWindow (app.Window);
+  SDL_DestroyWindow(app.Window);
   MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
@@ -1042,5 +1130,6 @@ begin
   end;
 
   cleanUp;
+  emptyArray;
   atExit;
 end.
