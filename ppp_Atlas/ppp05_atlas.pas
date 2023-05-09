@@ -666,7 +666,6 @@ end;
 procedure doEntities;
 VAR e : PEntity;
 begin
-  prev := stage.EntityHead;
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
