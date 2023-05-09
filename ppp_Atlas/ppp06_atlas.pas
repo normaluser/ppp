@@ -793,13 +793,13 @@ begin
 end;
 
 procedure doEntities;
-VAR e, prev : PEntity;             // prev fehlerhaft??  wo wird initialisiert mit dem Vorgaenger?
+VAR e, prev : PEntity;
 begin
-  prev := stage.EntityHead;        //hier hats gefehlt!!  FEHLER!!??
+  prev := stage.EntityHead;
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;           { wird in tick1 gepraucht um die Plattform zu bewegen }
+    selv := e;           { wird in tick1 gebraucht um die Plattform zu bewegen }
     if assigned(e^.tick) then
       e^.tick;           { bewege die Plattform }
     move(e);             { bewege das entity }
