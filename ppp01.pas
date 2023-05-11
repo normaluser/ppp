@@ -39,44 +39,44 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-	
+
       Map_Path          = 'data/map01.dat';
 
 TYPE                                        { "T" short for "TYPE" }
-     TDelegating = Procedure;
-     TDelegate   = RECORD
-                     logic, draw : TDelegating;
-                   end;
-     PTextur     = ^TTexture;
-     TTexture    = RECORD
-                     name : string;
-                     texture : PSDL_Texture;
-                     next : PTextur;
-                   end;
-     TApp        = RECORD
-                     Window   : PSDL_Window;
-                     Renderer : PSDL_Renderer;
-                     keyboard : Array[0..MAX_KEYBOARD_KEYS] OF integer;
-                     textureHead, textureTail : PTextur;
-                     Delegate : TDelegate;
-                   end;
-     TStage      = RECORD
-                     map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
-                   end;
+      TDelegating = Procedure;
+      TDelegate   = RECORD
+                      logic, draw : TDelegating;
+                    end;
+      PTexture    = ^TTexture;
+      TTexture    = RECORD
+                      name : string;
+                      texture : PSDL_Texture;
+                      next : PTexture;
+                    end;
+      TApp        = RECORD
+                      Window   : PSDL_Window;
+                      Renderer : PSDL_Renderer;
+                      Keyboard : ARRAY[0..MAX_KEYBOARD_KEYS] OF integer;
+                      TextureHead, TextureTail : PTexture;
+                      Delegate : TDelegate;
+                    end;
+      TStage      = RECORD
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
+                    end;
 
-VAR app      : TApp;
-    stage    : TStage;
-    event    : TSDL_EVENT;
-    exitLoop : BOOLEAN;
-    gTicks   : UInt32;
-    gRemainder : double;
-    tiles    : ARRAY[1..MAX_TILES] of PSDL_Texture;
+VAR   app         : TApp;
+      stage       : TStage;
+      event       : TSDL_EVENT;
+      exitLoop    : Boolean;
+      gTicks      : UInt32;
+      gRemainder  : double;
+      tiles       : ARRAY[1..MAX_TILES] of PSDL_Texture;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
@@ -108,24 +108,35 @@ begin
   SDL_RenderCopy(app.Renderer, texture, src, @dest);
 end;
 
+procedure prepareScene;
+begin
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
+end;
+
 // ****************   TEXTURE   ***************
 
 procedure addTextureToCache(LName : string; LTexture : PSDL_Texture);
-VAR cache : PTextur;
+VAR cache : PTexture;
 begin
   NEW(cache);
-  app.textureTail^.next := cache;
-  app.textureTail := cache;
+  app.TextureTail^.next := cache;
+  app.TextureTail := cache;
   cache^.name := LName;
   cache^.texture := LTexture;
   cache^.next := NIL;
 end;
 
 function getTexture(name : string) : PSDL_Texture;
-VAR tf : PTextur;
+VAR tf : PTexture;
 begin
   getTexture := NIL;
-  tf := app.textureHead^.next;
+  tf := app.TextureHead^.next;
   while (tf <> NIL) do
   begin
     if tf^.name = name then
@@ -134,16 +145,16 @@ begin
   end;
 end;
 
-function loadTexture(Pfad : string) : PSDL_Texture;
+function loadTexture(pfad : string) : PSDL_Texture;
 VAR tg : PSDL_Texture;
 begin
-  tg := getTexture(Pfad);
+  tg := getTexture(pfad);
   if tg = NIL then
   begin
-    tg := IMG_LoadTexture(app.Renderer, PChar(Pfad));
+    tg := IMG_LoadTexture(app.Renderer, PChar(pfad));
     if tg = NIL then
       errorMessage(SDL_GetError());
-    addTextureToCache(Pfad, tg);
+    addTextureToCache(pfad, tg);
   end;
   loadTexture := tg;
 end;
@@ -161,22 +172,11 @@ end;
 
 procedure initStage;
 begin
-  NEW(app.textureHead);
-  app.textureHead^.name := '';
-  app.textureHead^.texture := NIL;
-  app.textureHead^.next := NIL;
-  app.textureTail := app.textureHead;
-end;
-
-procedure prepareScene;
-begin
-  SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
-  SDL_RenderClear(app.Renderer);
-end;
-
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
+  NEW(app.TextureHead);
+  app.TextureHead^.name := '';
+  app.TextureHead^.texture := NIL;
+  app.TextureHead^.next := NIL;
+  app.TextureTail := app.TextureHead;
 end;
 
 // *****************    MAP   *****************
@@ -209,17 +209,17 @@ begin
   begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
-      x := 0;                     // first tile of the line
-      a := '';                    // new string / number
+      x := 0;                               // first tile of the line
+      a := '';                              // new string / number
       readln(FileIn,line);
       le := length(line);
 
-      for i := 1 to le do         // parse through the line
+      for i := 1 to le do                   // parse through the line
       begin
-        if line[i] <> ' ' then    // if line[i] is a number and not space
+        if line[i] <> ' ' then              // if line[i] is a number and not space
         begin
-          a := a + line[i];       // add number to the other numbers
-          if i = le then          // end of line, so add the last number!
+          a := a + line[i];                 // add number to the other numbers
+          if i = le then                    // end of line, so add the last number!
           begin
             stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
           end;
@@ -287,9 +287,9 @@ begin
 end;
 
 procedure destroyTexture;
-VAR t, a : PTextur;
+VAR t, a : PTexture;
 begin
-  a := app.textureHead^.next;
+  a := app.TextureHead^.next;
   while (a <> NIL) do
   begin
     t := a^.next;
@@ -309,12 +309,12 @@ procedure atExit;
 VAR i : byte;
 begin
   for i := 1 to MAX_TILES do
-    SDL_DestroyTexture (Tiles[i]);
+    SDL_DestroyTexture(Tiles[i]);
 
   if ExitCode <> 0 then cleanUp;
   Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
-  SDL_DestroyWindow (app.Window);
+  SDL_DestroyWindow(app.Window);
   MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
@@ -331,8 +331,8 @@ begin
     CASE event.key.keysym.sym of
       SDL_KEYDOWN : begin
                       if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
-                        app.keyboard[event.key.keysym.scancode] := 1;
-                       if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
+                        app.Keyboard[event.key.keysym.scancode] := 1;
+                       if (app.Keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
                     end;   { SDL_Keydown }
     end; { CASE }
   end;   { IF }
@@ -345,7 +345,7 @@ begin
     CASE event.key.keysym.sym of
       SDL_KEYUP : begin
                     if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
-                      app.keyboard[event.key.keysym.scancode] := 0;
+                      app.Keyboard[event.key.keysym.scancode] := 0;
                     end;   { SDL_Keyup }
     end; { CASE }
   end;   { IF }
@@ -387,9 +387,9 @@ end;
 begin
   CLRSCR;
   initSDL;
+  addExitProc(@atExit);
   initStage;
   initMap;
-  addExitProc(@atExit);
   exitLoop := FALSE;
   app.Delegate.Logic := @logic_Game;
   app.Delegate.Draw  := @draw_Game;

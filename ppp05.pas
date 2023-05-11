@@ -1,20 +1,25 @@
 {**************************************************************************
 Copyright (C) 2015-2018 Parallel Realities
+
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
+
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
 See the GNU General Public License for more details.
+
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
 ***************************************************************************
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
-* changed all PChar to String Types for better String handling!
+* changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
 * without momory holes; testet with: fpc -Criot -gl -gh ppp05.pas
 ***************************************************************************}
@@ -34,7 +39,6 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAP_RENDER_HEIGHT = 12;
       PLAYER_MOVE_SPEED = 6;
       PLATFORM_SPEED    = 4;
-
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
       EF_NONE           = 0;
@@ -46,64 +50,64 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       Ents_Path         = 'data/ents05.dat';
 
 TYPE                                        { "T" short for "TYPE" }
-     TDelegating = Procedure;
-     TDelegate   = RECORD
-                     logic, draw : TDelegating;
-                   end;
-     PTextur     = ^TTexture;
-     TTexture    = RECORD
-                     name : string;
-                     texture : PSDL_Texture;
-                     next : PTextur;
-                   end;
-     TApp        = RECORD
-                     Window   : PSDL_Window;
-                     Renderer : PSDL_Renderer;
-                     keyboard : Array[0..MAX_KEYBOARD_KEYS] OF integer;
-                     textureHead, textureTail : PTextur;
-                     Delegate : TDelegate;
-                   end;
-     PEntity     = ^TEntity;
-     TTick       = Procedure(Wert1 : PEntity);
-     TEntity     = RECORD
-                     x, y, ex, ey, sx, sy, dx, dy : double;
-                     w, h : integer;
-                     isOnGround : Boolean;
-                     texture : PSDL_Texture;
-                     tick : TTick;
-                     flags : longint;
-                     riding : PEntity;
-                     next : PEntity;
-                   end;
-     TStage      = RECORD
-                     camera : TSDL_Point;
-                     map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
-                     EntityHead, EntityTail : PEntity;
-                   end;
+      TDelegating = Procedure;
+      TDelegate   = RECORD
+                      logic, draw : TDelegating;
+                    end;
+      PTexture    = ^TTexture;
+      TTexture    = RECORD
+                      name : string;
+                      texture : PSDL_Texture;
+                      next : PTexture;
+                    end;
+      TApp        = RECORD
+                      Window   : PSDL_Window;
+                      Renderer : PSDL_Renderer;
+                      Keyboard : ARRAY[0..MAX_KEYBOARD_KEYS] OF integer;
+                      TextureHead, TextureTail : PTexture;
+                      Delegate : TDelegate;
+                    end;
+      PEntity     = ^TEntity;
+      TTick       = Procedure(Wert1 : PEntity);
+      TEntity     = RECORD
+                      x, y, ex, ey, sx, sy, dx, dy : double;
+                      w, h : integer;
+                      isOnGround : Boolean;
+                      texture : PSDL_Texture;
+                      tick : TTick;
+                      flags : UInt32;
+                      riding : PEntity;
+                      next : PEntity;
+                    end;
+      TStage      = RECORD
+                      camera : TSDL_Point;
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
+                      EntityHead, EntityTail : PEntity;
+                    end;
 
-VAR app        : TApp;
-    stage      : TStage;
-    event      : TSDL_EVENT;
-    exitLoop   : BOOLEAN;
-    gTicks     : UInt32;
-    gRemainder : double;
-    tiles      : ARRAY[1..MAX_TILES] of PSDL_Texture;
-    pete       : ARRAY[0..1] of PSDL_Texture;
-    player,
-    selv1      : PEntity;
+VAR   app         : TApp;
+      stage       : TStage;
+      event       : TSDL_EVENT;
+      exitLoop    : Boolean;
+      gTicks      : UInt32;
+      gRemainder  : double;
+      tiles       : ARRAY[1..MAX_TILES] of PSDL_Texture;
+      pete        : ARRAY[0..1] of PSDL_Texture;
+      player,
+      selv1       : PEntity;
 
 // *****************   UTIL   *****************
 
-procedure errorMessage(Message : string);
+procedure errorMessage(Message1 : string);
 begin
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message),NIL);
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
 end;
 
 procedure logMessage(Message1 : string);
 VAR Fmt : PChar;
 begin
-  Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
+  Fmt := 'File not found: %s'#13;    // Formatstring und "ARRAY of const" als Parameteruebergabe in [ ]
   SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
 end;
 
@@ -128,12 +132,12 @@ begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
 end;
 
-procedure InitEntity(e : PEntity);
+procedure initEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE;    e^.flags := EF_NONE; e^.Tick := NIL;
-  e^.texture := NIL;         e^.riding := NIL;   e^.next := NIL;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.Tick := NIL;
+  e^.texture := NIL; e^.riding := NIL; e^.next := NIL;
 end;
 
 // *****************   DRAW   *****************
@@ -164,24 +168,35 @@ begin
   SDL_RenderCopy(app.Renderer, texture, src, @dest);
 end;
 
+procedure prepareScene;
+begin
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
+end;
+
 // ****************   TEXTURE   ***************
 
 procedure addTextureToCache(LName : string; LTexture : PSDL_Texture);
-VAR cache : PTextur;
+VAR cache : PTexture;
 begin
   NEW(cache);
-  app.textureTail^.next := cache;
-  app.textureTail := cache;
+  app.TextureTail^.next := cache;
+  app.TextureTail := cache;
   cache^.name := LName;
   cache^.texture := LTexture;
   cache^.next := NIL;
 end;
 
 function getTexture(name : string) : PSDL_Texture;
-VAR tf : PTextur;
+VAR tf : PTexture;
 begin
   getTexture := NIL;
-  tf := app.textureHead^.next;
+  tf := app.TextureHead^.next;
   while (tf <> NIL) do
   begin
     if tf^.name = name then
@@ -190,16 +205,16 @@ begin
   end;
 end;
 
-function loadTexture(Pfad : string) : PSDL_Texture;
+function loadTexture(pfad : string) : PSDL_Texture;
 VAR tg : PSDL_Texture;
 begin
-  tg := getTexture(Pfad);
+  tg := getTexture(pfad);
   if tg = NIL then
   begin
-    tg := IMG_LoadTexture(app.Renderer, PChar(Pfad));
+    tg := IMG_LoadTexture(app.Renderer, PChar(pfad));
     if tg = NIL then
       errorMessage(SDL_GetError());
-    addTextureToCache(Pfad, tg);
+    addTextureToCache(pfad, tg);
   end;
   loadTexture := tg;
 end;
@@ -264,17 +279,17 @@ begin
   begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
-      x := 0;                     // first tile of the line
-      a := '';                    // new string / number
+      x := 0;                               // first tile of the line
+      a := '';                              // new string / number
       readln(FileIn,line);
       le := length(line);
 
-      for i := 1 to le do         // parse through the line
+      for i := 1 to le do                   // parse through the line
       begin
-        if line[i] <> ' ' then    // if line[i] is a number and not space
+        if line[i] <> ' ' then              // if line[i] is a number and not space
         begin
-          a := a + line[i];       // add number to the other numbers
-          if i = le then          // end of line, so add the last number!
+          a := a + line[i];                 // add number to the other numbers
+          if i = le then                    // end of line, so add the last number!
           begin
             stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
           end;
@@ -296,7 +311,7 @@ procedure initMap;
 begin
   FillChar(stage.map, sizeof(stage.map), 0);
   loadTiles;
-  loadMap(map_Path);
+  loadMap(Map_Path);
 end;
 
 // *****************   Block   ****************
@@ -352,7 +367,6 @@ begin
   e^.x := e^.sx;
   e^.y := e^.sy;
   e^.tick := @tick_Platform;
-
   e^.texture := loadTexture('gfx/platform.png');
   SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
   e^.flags := EF_SOLID + EF_WEIGHTLESS + EF_PUSH;
@@ -387,12 +401,12 @@ procedure loadEnts(filename : string);
 VAR Datei: Text;               (* Dateizeiger *)
     zeile : string;
 BEGIN
-  assign (Datei, filename);    (* Pfad festlegen *)
+  assign (Datei, filename);    (* pfad festlegen *)
   {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
   if IOResult = 0 then
   begin
     REPEAT
-      readLn (Datei, zeile);     (* eine Zeile lesen *)
+      readLn (Datei, zeile);   (* eine Zeile lesen *)
       addEntFromLine(zeile);
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
@@ -403,10 +417,10 @@ end;
 procedure drawEntities;
 VAR e : PEntity;
 begin
-  e := stage.entityHead^.next;
+  e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    blit(e^.texture, TRUNC(e^.x - stage.camera.x), TRUNC(e^.y - stage.camera.y), 0);
+    blit(e^.texture, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
@@ -433,7 +447,7 @@ begin
 
     if hit = 1 then
     begin
-      ///ORG-C Code: adj = dx > 0 ? -e^.w : TILE_SIZE
+      //ORG C-Code: adj = dx > 0 ? -e^.w : TILE_SIZE
       if dx > 0 then adj := -e^.w
                 else adj := TILE_SIZE;
       e^.x := (mx * TILE_SIZE) + adj;
@@ -443,7 +457,7 @@ begin
 
   if (dy <> 0) then
   begin
-    ///ORG C-Code: my = dy > 0 ? (e^.y + e^.h) : e^.y;
+    //ORG C-Code: my = dy > 0 ? (e^.y + e^.h) : e^.y;
     if dy > 0 then my := TRUNC(e^.y + e^.h)
               else my := TRUNC(e^.y);
     my := my DIV TILE_SIZE;
@@ -466,13 +480,13 @@ begin
       e^.y := (my * TILE_SIZE) + adj;
       e^.dy := 0;
 
-      //ORG C-Code: e^.isOnGround = dy > 0;
+      //e^.isOnGround = dy > 0;
       if dy > 0 then e^.isOnGround := TRUE;
     end;
   end;
 end;
 
-{************** FORWARD Declaration !! ************** }
+{*************** FORWARD Declaration !! **************}
 procedure push(e : PEntity; dx, dy : double); FORWARD;
 {*****************************************************}
 
@@ -480,7 +494,7 @@ procedure moveToEntities(e : PEntity; dx, dy : double);
 VAR other : PEntity;
     adj : integer;
 begin
-  other := stage.entityHead^.next;
+  other := stage.EntityHead^.next;
   while other <> NIL do
   begin
     if ((other <> e) AND (collision(ROUND(e^.x), ROUND(e^.y), e^.w, e^.h, ROUND(other^.x), ROUND(other^.y), other^.w, other^.h))) then
@@ -587,15 +601,15 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts(ents_Path);
+  loadEnts(Ents_Path);
 end;
 
 // ****************   CAMERA   ****************
 
 procedure doCamera;
 begin
-  stage.camera.x := TRUNC(player^.x + (player^.w / 2));
-  stage.camera.y := TRUNC(player^.y + (player^.h / 2));
+  stage.camera.x := ROUND(player^.x + (player^.w DIV 2));
+  stage.camera.y := ROUND(player^.y + (player^.h DIV 2));
 
   stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
   stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
@@ -608,29 +622,29 @@ procedure doPlayer;
 begin
   player^.dx := 0;
 
-  if ((app.keyboard[SDL_SCANCODE_A] = 1) OR (app.keyboard[SDL_SCANCODE_LEFT] = 1)) then
+  if ((app.Keyboard[SDL_SCANCODE_A] = 1) OR (app.Keyboard[SDL_SCANCODE_LEFT] = 1)) then
   begin
     player^.dx := player^.dx - PLAYER_MOVE_SPEED;
     player^.texture := pete[1];
   end;
 
-  if ((app.keyboard[SDL_SCANCODE_D] = 1) OR (app.keyboard[SDL_SCANCODE_RIGHT] = 1)) then
+  if ((app.Keyboard[SDL_SCANCODE_D] = 1) OR (app.Keyboard[SDL_SCANCODE_RIGHT] = 1)) then
   begin
     player^.dx := player^.dx + PLAYER_MOVE_SPEED;
     player^.texture := pete[0];
   end;
 
-  if ((app.keyboard[SDL_SCANCODE_I] = 1) AND (player^.isOnGround = TRUE)) then
+  if ((app.Keyboard[SDL_SCANCODE_I] = 1) AND (player^.isOnGround = TRUE)) then
   begin
     player^.riding := NIL;
     player^.dy := -20;
   end;
 
-  if (app.keyboard[SDL_SCANCODE_SPACE] = 1) then
+  if (app.Keyboard[SDL_SCANCODE_SPACE] = 1) then
   begin
     player^.x := 0;
     player^.y := 0;
-    app.keyboard[SDL_SCANCODE_SPACE] := 0;
+    app.Keyboard[SDL_SCANCODE_SPACE] := 0;
   end;
 end;
 
@@ -647,17 +661,6 @@ begin
   player^.texture := pete[0];
 
   SDL_QueryTexture(player^.texture, NIL, NIL, @player^.w, @player^.h);
-end;
-
-procedure prepareScene;
-begin
-  SDL_SetRenderDrawColor(app.Renderer, 0, 0, 0, 255);
-  SDL_RenderClear(app.Renderer);
-end;
-
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
 end;
 
 // *****************   STAGE   *****************
@@ -680,15 +683,15 @@ end;
 
 procedure initStage;
 begin
-  NEW(app.textureHead);
-  app.textureHead^.name := '';
-  app.textureHead^.texture := NIL;
-  app.textureHead^.next := NIL;
-  app.textureTail := app.textureHead;
+  NEW(app.TextureHead);
+  app.TextureHead^.name := '';
+  app.TextureHead^.texture := NIL;
+  app.TextureHead^.next := NIL;
+  app.TextureTail := app.TextureHead;
 
-  NEW(stage.entityHead);
-  stage.entityHead^.next := NIL;
-  stage.entityTail := stage.entityHead;
+  NEW(stage.EntityHead);
+  stage.EntityHead^.next := NIL;
+  stage.EntityTail := stage.EntityHead;
 
   initEntities;
   initPlayer;
@@ -725,9 +728,9 @@ begin
 end;
 
 procedure destroyTexture;
-VAR t, a : PTextur;
+VAR t, a : PTexture;
 begin
-  a := app.textureHead^.next;
+  a := app.TextureHead^.next;
   while (a <> NIL) do
   begin
     t := a^.next;
@@ -762,15 +765,15 @@ begin
 end;
 
 procedure atExit;
-VAR i : byte;
+VAR i : integer;
 begin
   for i := 1 to MAX_TILES do
-    SDL_DestroyTexture (Tiles[i]);
+    SDL_DestroyTexture(Tiles[i]);
 
   if ExitCode <> 0 then cleanUp;
   Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
-  SDL_DestroyWindow (app.Window);
+  SDL_DestroyWindow(app.Window);
   MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
@@ -791,13 +794,13 @@ begin
 
       SDL_KEYDOWN: begin
                      if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
-                       app.keyboard[event.key.keysym.scancode] := 1;
-                     if (app.keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
+                       app.Keyboard[event.key.keysym.scancode] := 1;
+                     if (app.Keyboard[SDL_ScanCode_ESCAPE]) = 1 then exitLoop := TRUE;
                    end;   { SDL_Keydown }
 
       SDL_KEYUP:   begin
                      if ((event.key.repeat_ = 0) AND (event.key.keysym.scancode < MAX_KEYBOARD_KEYS)) then
-                       app.keyboard[event.key.keysym.scancode] := 0;
+                       app.Keyboard[event.key.keysym.scancode] := 0;
                    end;   { SDL_Keyup }
     end;  { CASE event }
   end;    { SDL_PollEvent }
@@ -821,7 +824,7 @@ end;
 // *****************   MAIN   *****************
 
 begin
-  //CLRSCR;
+  CLRSCR;
   initSDL;
   addExitProc(@atExit);
   initGame;
