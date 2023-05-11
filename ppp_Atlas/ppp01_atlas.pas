@@ -39,7 +39,6 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
       NUMATLASBUCKETS   = 20;
-
       Map_Path          = 'data/map01.dat';
       Json_Path         = 'data/atlas.json';
       Tex_Path          = 'gfx/atlas.png';
@@ -65,14 +64,14 @@ TYPE                                       { "T" short for "TYPE" }
                       Delegate : TDelegate;
                     end;
       TStage      = RECORD
-                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
                     end;
       AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
 
 VAR   app         : TApp;
       stage       : TStage;
       event       : TSDL_Event;
-      exitLoop    : BOOLEAN;
+      exitLoop    : Boolean;
       gTicks      : UInt32;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
@@ -100,7 +99,7 @@ begin
   HashCode := Result;
 end;
 
-procedure errorMessage(Message1 : string);
+procedure errorMessage(Message1 : String);
 begin
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
@@ -152,15 +151,15 @@ begin
   end;
 end;
 
-procedure presentScene;
-begin
-  SDL_RenderPresent(app.Renderer);
-end;
-
 procedure prepareScene;
 begin
   SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
   SDL_RenderClear(app.Renderer);
+end;
+
+procedure presentScene;
+begin
+  SDL_RenderPresent(app.Renderer);
 end;
 
 // ****************   TEXTURE   ***************
@@ -251,46 +250,6 @@ end;
 
 // *****************    MAP   *****************
 
-procedure loadMap(filename : String255);
-VAR i, x, y, le : integer;
-    FileIn : Text;
-    line : String255;
-    a : string[10];
-begin
-  assign (FileIn, filename);
-  {$i-}; reset(FileIn); {$i+};
-  if IOresult = 0 then
-  begin
-    for y := 0 to PRED(MAP_HEIGHT) do
-    begin
-      x := 0;                               // first tile of the line
-      a := '';                              // new string / number
-      readln(FileIn,line);
-      le := length(line);
-
-      for i := 1 to le do                   // parse through the line
-      begin
-        if line[i] <> ' ' then              // if line[i] is a number and not space
-        begin
-          a := a + line[i];                 // add number to the other numbers
-          if i = le then                    // end of line, so add the last number!
-          begin
-            stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
-          end;
-        end
-        else
-        begin
-          stage.map[x,y] := StrToInt(a);    // write number regular
-          INC(x);                           // next tile
-          a := '';                          // new string / number
-        end;
-      end;
-    end;
-    close(FileIn);
-  end
-  else errorMessage(filename + ' not found!');
-end;
-
 procedure drawMap;
 VAR x, y, n : integer;
     filename : String255;
@@ -311,24 +270,63 @@ begin
   end;
 end;
 
+procedure loadMap(filename : String255);
+VAR i, x, y, le : integer;
+    FileIn : Text;
+    line : String255;
+    a : String[10];
+begin
+  assign (FileIn, filename);
+  {$i-}; reset(FileIn); {$i+};
+  if IOresult = 0 then
+  begin
+    for y := 0 to PRED(MAP_HEIGHT) do
+    begin
+      x := 0;                               // first tile of the line
+      a := '';                              // new String / number
+      readln(FileIn,line);
+      le := length(line);
+
+      for i := 1 to le do                   // parse through the line
+      begin
+        if line[i] <> ' ' then              // if line[i] is a number and not space
+        begin
+          a := a + line[i];                 // add number to the other numbers
+          if i = le then                    // end of line, so add the last number!
+          begin
+            stage.map[x,y] := StrToInt(a);  // write it to stage.map as last number
+          end;
+        end
+        else
+        begin
+          stage.map[x,y] := StrToInt(a);    // write number regular
+          INC(x);                           // next tile
+          a := '';                          // new String / number
+        end;
+      end;
+    end;
+    close(FileIn);
+  end
+  else errorMessage(filename + ' not found!');
+end;
+
 procedure initMap;
 begin
   FillChar(stage.map, SizeOf(stage.map), 0);
-  loadMap(map_Path);
+  loadMap(Map_Path);
 end;
 
 // *****************   STAGE   *****************
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderFillRect(app.Renderer, NIL);
   drawMap;
 end;
 
 procedure logic_Game;
 begin
-
 end;
 
 // ***************   INIT SDL   ***************

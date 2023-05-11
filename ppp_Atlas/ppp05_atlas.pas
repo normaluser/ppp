@@ -78,13 +78,13 @@ TYPE                                       { "T" short for "TYPE" }
                       isOnGround : Boolean;
                       texture : String255;
                       tick : TTick;
-                      flags : longint;
+                      flags : UInt32;
                       riding : PEntity;
                       next : PEntity;
                     end;
       TStage      = RECORD
                       camera : TSDL_Point;
-                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
                       EntityHead, EntityTail : PEntity;
                     end;
       AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
@@ -92,7 +92,7 @@ TYPE                                       { "T" short for "TYPE" }
 VAR   app         : TApp;
       stage       : TStage;
       event       : TSDL_Event;
-      exitLoop    : BOOLEAN;
+      exitLoop    : Boolean;
       gTicks      : UInt32;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
@@ -112,8 +112,8 @@ procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.ex := 0.0; e^.sx := 0.0; e^.dx := 0.0; e^.w := 0;
   e^.y := 0.0; e^.ey := 0.0; e^.sy := 0.0; e^.dy := 0.0; e^.h := 0;
-  e^.isOnGround := FALSE;    e^.flags := EF_NONE; e^.tick := NIL;
-  e^.riding := NIL;   e^.next := NIL;
+  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.tick := NIL;
+  e^.riding := NIL; e^.next := NIL; e^.texture := '';
 end;
 
 function HashCode(Value : String255) : UInt32;     // DJB hash function
@@ -140,7 +140,7 @@ end;
 procedure logMessage(Message1 : String);
 VAR Fmt : PChar;
 begin
-  Fmt := 'File not found: %s'#13;    // Formatstring und "array of const" als Parameteruebergabe in [ ]
+  Fmt := 'File not found: %s'#13;    // Formatstring and "array of const" as Parameter in [ ]
   SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
 end;
 
@@ -490,7 +490,7 @@ procedure loadEnts(filename : String);
 VAR Datei: Text;               (* Dateizeiger *)
     zeile : String;
 BEGIN
-  assign (Datei, filename);    (* Pfad festlegen *)
+  assign (Datei, filename);    (* pfad festlegen *)
   {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
   if IOResult = 0 then
   begin
@@ -507,11 +507,11 @@ procedure drawEntities;
 VAR e : PEntity;
     atlas : PAtlasImage;
 begin
-  e := stage.entityHead^.next;
+  e := stage.EntityHead^.next;
   while e <> NIL do
   begin
     atlas := getAtlasImage(e^.texture);
-    blitAtlasImage(atlas, Round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
+    blitAtlasImage(atlas, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
@@ -577,7 +577,7 @@ begin
   end;
 end;
 
-{************** FORWARD Declaration !! ************** }
+{*************** FORWARD Declaration !! **************}
 procedure push(e : PEntity; dx, dy : double); FORWARD;
 {*****************************************************}
 
@@ -585,7 +585,7 @@ procedure moveToEntities(e : PEntity; dx, dy : double);
 VAR other : PEntity;
     adj : integer;
 begin
-  other := stage.entityHead^.next;
+  other := stage.EntityHead^.next;
   while other <> NIL do
   begin
     if ((other <> e) AND (collision(ROUND(e^.x), ROUND(e^.y), e^.w, e^.h, ROUND(other^.x), ROUND(other^.y), other^.w, other^.h))) then
@@ -669,10 +669,10 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    selv := e;           { wird in tick1 gepraucht um die Plattform zu bewegen }
+    selv := e;           { used in tick1 to move the platform }
     if assigned(e^.tick) then
-      e^.tick;           { bewege die Plattform }
-    move(e);             { bewege das entity }
+      e^.tick;           { move platform }
+    move(e);             { move entity }
     e := e^.next;
   end;
   e := stage.EntityHead^.next;
@@ -705,7 +705,7 @@ begin
   stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
   stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
 
-  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH  * TILE_SIZE) - SCREEN_WIDTH);
+  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
@@ -758,9 +758,8 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
-
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderFillRect(app.Renderer, NIL);
   drawMap;
   drawEntities;
 end;
@@ -774,10 +773,9 @@ end;
 
 procedure initStage;
 begin
-  NEW(stage.entityHead);
-  stage.entityHead^.next := NIL;
-  stage.entityTail := stage.entityHead;
-  initAtlas;
+  NEW(stage.EntityHead);
+  stage.EntityHead^.next := NIL;
+  stage.EntityTail := stage.EntityHead;
   initEntities;
   initPlayer;
   initMap;
@@ -842,11 +840,13 @@ begin
     ent := t;
   end;
   DISPOSE(stage.EntityHead);
+  emptyArray;
   if ExitCode <> 0 then WriteLn('CleanUp complete!');
 end;
 
 procedure initGame;
 begin
+  initAtlas;
 end;
 
 procedure atExit;
@@ -924,6 +924,5 @@ begin
   end;
 
   cleanUp;
-  emptyArray;
   atExit;
 end.

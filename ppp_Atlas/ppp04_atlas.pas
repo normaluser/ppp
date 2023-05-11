@@ -74,12 +74,12 @@ TYPE                                       { "T" short for "TYPE" }
                       w, h : integer;
                       isOnGround : Boolean;
                       texture : String255;
-                      flags : longint;
+                      flags : UInt32;
                       next : PEntity;
                     end;
       TStage      = RECORD
                       camera : TSDL_Point;
-                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
                       EntityHead, EntityTail : PEntity;
                     end;
       AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
@@ -87,7 +87,7 @@ TYPE                                       { "T" short for "TYPE" }
 VAR   app         : TApp;
       stage       : TStage;
       event       : TSDL_Event;
-      exitLoop    : BOOLEAN;
+      exitLoop    : Boolean;
       gTicks      : UInt32;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
@@ -105,7 +105,7 @@ end;
 procedure initEntity(VAR e : PEntity);
 begin
   e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.flags := EF_NONE; e^.next := NIL;
+  e^.isOnGround := FALSE; e^.next := NIL; e^.flags := EF_NONE; e^.texture := '';
 end;
 
 function HashCode(Value : String255) : UInt32;     // DJB hash function
@@ -189,7 +189,7 @@ end;
 
 procedure prepareScene;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
   SDL_RenderClear(app.Renderer);
 end;
 
@@ -340,7 +340,7 @@ begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
       x := 0;                               // first tile of the line
-      a := '';                              // new string / number
+      a := '';                              // new String / number
       readln(FileIn,line);
       le := length(line);
 
@@ -358,7 +358,7 @@ begin
         begin
           stage.map[x,y] := StrToInt(a);    // write number regular
           INC(x);                           // next tile
-          a := '';                          // new string / number
+          a := '';                          // new String / number
         end;
       end;
     end;
@@ -370,7 +370,7 @@ end;
 procedure initMap;
 begin
   FillChar(stage.map, SizeOf(stage.map), 0);
-  loadMap(map_Path);
+  loadMap(Map_Path);
 end;
 
 // ***************   ENTITIES   ***************
@@ -408,12 +408,12 @@ procedure loadEnts(filename : String);
 VAR Datei: Text;               (* Dateizeiger *)
     zeile : String;
 BEGIN
-  assign (Datei, filename);    (* Pfad festlegen *)
+  assign (Datei, filename);    (* pfad festlegen *)
   {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
   if IOResult = 0 then
   begin
     REPEAT
-      readLn (Datei, zeile);     (* eine Zeile lesen *)
+      readLn (Datei, zeile);   (* eine Zeile lesen *)
       addEntFromLine(zeile);
     UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
     close (Datei);      (* Datei schliessen *)
@@ -425,12 +425,73 @@ procedure drawEntities;
 VAR e : PEntity;
     atlas : PAtlasImage;
 begin
-  e := stage.entityHead^.next;
+  e := stage.EntityHead^.next;
   while e <> NIL do
   begin
     atlas := getAtlasImage(e^.texture);
-    blitAtlasImage(atlas, Round(e^.x - stage.camera.x), Round(e^.y - stage.camera.y), 0);
+    blitAtlasImage(atlas, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
     e := e^.next;
+  end;
+end;
+
+procedure moveToWorld(e : PEntity; dx, dy : double);
+VAR mx, my, hit, adj : integer;
+begin
+  if (dx <> 0) then
+  begin
+    //ORG C-Code: mx = dx > 0 ? (e->x + e->w) : e->x;
+    if dx > 0 then mx := TRUNC(e^.x + e^.w)
+              else mx := TRUNC(e^.x);
+    mx := mx DIV TILE_SIZE;
+    my := TRUNC(e^.y) DIV TILE_SIZE;
+    hit := 0;
+
+    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
+      hit := 1;
+
+    my := (TRUNC(e^.y + e^.h) - 1) DIV TILE_SIZE;
+
+    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
+      hit := 1;
+
+    if hit = 1 then
+    begin
+      //ORG C-Code: adj = dx > 0 ? -e^.w : TILE_SIZE
+      if dx > 0 then adj := -e^.w
+                else adj := TILE_SIZE;
+      e^.x := (mx * TILE_SIZE) + adj;
+      e^.dx := 0;
+    end;
+  end;
+
+  if (dy <> 0) then
+  begin
+    //ORG C-Code: my = dy > 0 ? (e^.y + e^.h) : e^.y;
+    if dy > 0 then my := TRUNC(e^.y + e^.h)
+              else my := TRUNC(e^.y);
+    my := my DIV TILE_SIZE;
+    mx := TRUNC(e^.x) DIV TILE_SIZE;
+    hit := 0;
+
+    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
+      hit := 1;
+
+    mx := (TRUNC(e^.x + e^.w) - 1) DIV TILE_SIZE;
+
+    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
+      hit := 1;
+
+    if (hit = 1) then
+    begin
+      //ORG C-Code: adj = dy > 0 ? -e^.h : TILE_SIZE;
+      if dy > 0 then adj := -e^.h
+                else adj := TILE_SIZE;
+      e^.y := (my * TILE_SIZE) + adj;
+      e^.dy := 0;
+
+      //ORG C-Code: e^.isOnGround = dy > 0;
+      if dy > 0 then e^.isOnGround := TRUE;
+    end;
   end;
 end;
 
@@ -438,16 +499,16 @@ procedure moveToEntities(e : PEntity; dx, dy : double);
 VAR other : PEntity;
     adj : integer;
 begin
-  other := stage.entityHead^.next;
+  other := stage.EntityHead^.next;
   while other <> NIL do
   begin
-    if ((other <> e) AND collision(Round(e^.x), Round(e^.y), Round(e^.w), Round(e^.h), Round(other^.x), Round(other^.y), Round(other^.w), Round(other^.h))) then
+    if ((other <> e) AND collision(ROUND(e^.x), ROUND(e^.y), ROUND(e^.w), ROUND(e^.h), ROUND(other^.x), ROUND(other^.y), ROUND(other^.w), ROUND(other^.h))) then
     begin
       if (other^.flags AND EF_SOLID) <> 0 then
       begin
         if (dy <> 0) then
         begin
-          //adj = dy > 0 ? -e^.h : other^.h;
+          //ORG C-Code: adj = dy > 0 ? -e^.h : other^.h;
           if dy > 0 then
             adj := -e^.h
           else
@@ -461,7 +522,7 @@ begin
 
         if (dx <> 0) then
         begin
-          //adj = dx > 0 ? -e^.w : other^.w;
+          //ORG C-Code: adj = dx > 0 ? -e^.w : other^.w;
           if dx > 0 then
             adj := -e^.w
           else
@@ -473,67 +534,6 @@ begin
       end;
     end;
     other := other^.next;
-  end;
-end;
-
-procedure moveToWorld(e : PEntity; dx, dy : double);
-VAR mx, my, hit, adj : integer;
-begin
-  if (dx <> 0) then
-  begin
-    //mx = dx > 0 ? (e->x + e->w) : e->x;
-    if dx > 0 then mx := Round(e^.x + e^.w)
-              else mx := Round(e^.x);
-    mx := mx DIV TILE_SIZE;
-    my := Round(e^.y) DIV TILE_SIZE;
-    hit := 0;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    my := (Round(e^.y + e^.h) - 1) DIV TILE_SIZE;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    if hit = 1 then
-    begin
-      //adj = dx > 0 ? -e^.w : TILE_SIZE
-      if dx > 0 then adj := -e^.w
-                else adj := TILE_SIZE;
-      e^.x := (mx * TILE_SIZE) + adj;
-      e^.dx := 0;
-    end;
-  end;
-
-  if (dy <> 0) then
-  begin
-    //my = dy > 0 ? (e^.y + e^.h) : e^.y;
-    if dy > 0 then my := Round(e^.y + e^.h)
-              else my := Round(e^.y);
-    my := my DIV TILE_SIZE;
-    mx := Round(e^.x) DIV TILE_SIZE;
-    hit := 0;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    mx := (Round(e^.x + e^.w) - 1) DIV TILE_SIZE;
-
-    if ((NOT isInsideMap(mx, my)) OR (stage.map[mx][my] <> 0)) then
-      hit := 1;
-
-    if (hit = 1) then
-    begin
-      //adj = dy > 0 ? -e^.h : TILE_SIZE;
-      if dy > 0 then adj := -e^.h
-                else adj := TILE_SIZE;
-      e^.y := (my * TILE_SIZE) + adj;
-      e^.dy := 0;
-
-      //e^.isOnGround = dy > 0;
-      if dy > 0 then e^.isOnGround := TRUE;
-    end;
   end;
 end;
 
@@ -571,20 +571,20 @@ end;
 
 procedure initEntities;
 begin
-  loadEnts(ents_Path);
+  loadEnts(Ents_Path);
 end;
 
 // ****************   CAMERA   ****************
 
 procedure doCamera;
 begin
-  stage.camera.x := Round(player^.x + (player^.w DIV 2));
-  stage.camera.y := Round(player^.y + (player^.h DIV 2));
+  stage.camera.x := TRUNC(player^.x + (player^.w DIV 2));
+  stage.camera.y := TRUNC(player^.y + (player^.h DIV 2));
 
   stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
   stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
 
-  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH  * TILE_SIZE) - SCREEN_WIDTH);
+  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
@@ -634,8 +634,8 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderFillRect(app.Renderer, NIL);
   drawMap;
   drawEntities;
 end;
@@ -649,10 +649,9 @@ end;
 
 procedure initStage;
 begin
-  NEW(stage.entityHead);
-  stage.entityHead^.next := NIL;
-  stage.entityTail := stage.entityHead;
-  initAtlas;
+  NEW(stage.EntityHead);
+  stage.EntityHead^.next := NIL;
+  stage.EntityTail := stage.EntityHead;
   initEntities;
   initPlayer;
   initMap;
@@ -717,11 +716,13 @@ begin
     ent := t;
   end;
   DISPOSE(stage.EntityHead);
+  emptyArray;
   if ExitCode <> 0 then WriteLn('CleanUp complete!');
 end;
 
 procedure initGame;
 begin
+  initAtlas;
 end;
 
 procedure atExit;
@@ -784,6 +785,7 @@ begin
   CLRSCR;
   initSDL;
   addExitProc(@atExit);
+  initGame;
   initStage;
   exitLoop := FALSE;
 
@@ -798,6 +800,5 @@ begin
   end;
 
   cleanUp;
-  emptyArray;
   atExit;
 end.

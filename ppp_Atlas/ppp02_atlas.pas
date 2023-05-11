@@ -65,14 +65,14 @@ TYPE                                       { "T" short for "TYPE" }
                     end;
       TStage      = RECORD
                       camera : TSDL_Point;
-                      map : ARRAY[0..PRED(MAP_WIDTH),0..PRED(MAP_HEIGHT)] of integer;
+                      map : ARRAY[0..PRED(MAP_WIDTH), 0..PRED(MAP_HEIGHT)] of integer;
                     end;
       AtlasArr    = ARRAY[0..NUMATLASBUCKETS] of PAtlasImage;
 
 VAR   app         : TApp;
       stage       : TStage;
       event       : TSDL_Event;
-      exitLoop    : BOOLEAN;
+      exitLoop    : Boolean;
       gTicks      : UInt32;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
@@ -100,33 +100,10 @@ begin
   HashCode := Result;
 end;
 
-procedure errorMessage(Message1 : string);
+procedure errorMessage(Message1 : String);
 begin
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
-end;
-
-// ****************   CAMERA   ****************
-
-procedure doCamera;
-begin
-  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
-  stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
-end;
-
-procedure doPlayer;
-begin
-  if ((app.keyboard[SDL_SCANCODE_A] = 1) OR (app.keyboard[SDL_SCANCODE_LEFT] = 1)) then
-    stage.camera.x := stage.camera.x - PLAYER_MOVE_SPEED;
-
-  if ((app.keyboard[SDL_SCANCODE_D] = 1) OR (app.keyboard[SDL_SCANCODE_RIGHT] = 1)) then
-    stage.camera.x := stage.camera.x + PLAYER_MOVE_SPEED;
-
-  if ((app.keyboard[SDL_SCANCODE_W] = 1) OR (app.keyboard[SDL_SCANCODE_UP] = 1)) then
-    stage.camera.y := stage.camera.y - PLAYER_MOVE_SPEED;
-
-  if ((app.keyboard[SDL_SCANCODE_S] = 1) OR (app.keyboard[SDL_SCANCODE_DOWN] = 1)) then
-    stage.camera.y := stage.camera.y + PLAYER_MOVE_SPEED;
 end;
 
 // *****************   DRAW   *****************
@@ -177,7 +154,7 @@ end;
 
 procedure prepareScene;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
   SDL_RenderClear(app.Renderer);
 end;
 
@@ -319,7 +296,7 @@ procedure loadMap(filename : String255);
 VAR i, x, y, le : integer;
     FileIn : Text;
     line : String255;
-    a : string[10];
+    a : String[10];
 begin
   assign (FileIn, filename);
   {$i-}; reset(FileIn); {$i+};
@@ -328,7 +305,7 @@ begin
     for y := 0 to PRED(MAP_HEIGHT) do
     begin
       x := 0;                               // first tile of the line
-      a := '';                              // new string / number
+      a := '';                              // new String / number
       readln(FileIn,line);
       le := length(line);
 
@@ -346,7 +323,7 @@ begin
         begin
           stage.map[x,y] := StrToInt(a);    // write number regular
           INC(x);                           // next tile
-          a := '';                          // new string / number
+          a := '';                          // new String / number
         end;
       end;
     end;
@@ -358,15 +335,38 @@ end;
 procedure initMap;
 begin
   FillChar(stage.map, SizeOf(stage.map), 0);
-  loadMap(map_Path);
+  loadMap(Map_Path);
+end;
+
+// ****************   CAMERA   ****************
+
+procedure doCamera;
+begin
+  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
+  stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
+end;
+
+procedure doPlayer;
+begin
+  if ((app.keyboard[SDL_SCANCODE_A] = 1) OR (app.keyboard[SDL_SCANCODE_LEFT] = 1)) then
+    stage.camera.x := stage.camera.x - PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_D] = 1) OR (app.keyboard[SDL_SCANCODE_RIGHT] = 1)) then
+    stage.camera.x := stage.camera.x + PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_W] = 1) OR (app.keyboard[SDL_SCANCODE_UP] = 1)) then
+    stage.camera.y := stage.camera.y - PLAYER_MOVE_SPEED;
+
+  if ((app.keyboard[SDL_SCANCODE_S] = 1) OR (app.keyboard[SDL_SCANCODE_DOWN] = 1)) then
+    stage.camera.y := stage.camera.y + PLAYER_MOVE_SPEED;
 end;
 
 // *****************   STAGE   *****************
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
+  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  SDL_RenderFillRect(app.Renderer, NIL);
   drawMap;
 end;
 
