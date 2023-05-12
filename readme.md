@@ -35,6 +35,7 @@ Arrow Keys -> Move
 
 i -> Jump
 
+SPACE key restart the game
 ESC key or the window´s close button or a mouseclick inside of the game window closes the game.
 
 # Special Thanks / Credits
