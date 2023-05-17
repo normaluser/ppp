@@ -23,7 +23,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * without momory holes; testet with: fpc -Criot -gl -gh ppp04_atlas.pas
 ***************************************************************************}
 
-PROGRAM ppp04;
+PROGRAM ppp04_Atlas;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
 USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, JsonTools, sysutils;
@@ -39,6 +39,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
       NUMATLASBUCKETS   = 20;
+      MAX_TILES         = 7;               { Anz. Tiles in der Map }
       EF_NONE           = 0;
       EF_WEIGHTLESS     = (2 << 0);   //2
       EF_SOLID          = (2 << 1);   //4
@@ -73,7 +74,7 @@ TYPE                                       { "T" short for "TYPE" }
                       x, y, dx, dy : double;
                       w, h : integer;
                       isOnGround : Boolean;
-                      texture : String255;
+                      texture : PAtlasImage;
                       flags : UInt32;
                       next : PEntity;
                     end;
@@ -92,20 +93,21 @@ VAR   app         : TApp;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
       atlases     : AtlasArr;
-      pete        : ARRAY[0..1] of String255;
+      pete        : ARRAY[0..1] of PAtlasImage;
+      tilesArr    : ARRAY[1..Max_Tiles] of PAtlasImage;
       player      : PEntity;
 
 // *****************   UTIL   *****************
 
-procedure initAtlasImage(VAR e : PAtlasImage);
+procedure initAtlasImage(e : PAtlasImage);
 begin
   e^.FNam := ''; e^.Rot := 0; e^.Tex := NIL; e^.next := NIL;
 end;
 
-procedure initEntity(VAR e : PEntity);
+procedure initEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.next := NIL; e^.flags := EF_NONE; e^.texture := '';
+  e^.isOnGround := FALSE; e^.next := NIL; e^.flags := EF_NONE; e^.texture := NIL;
 end;
 
 function HashCode(Value : String255) : UInt32;     // DJB hash function
@@ -214,6 +216,7 @@ begin
 
     a := a^.next;
   end;
+  if getAtlasImage = NIL then errorMessage(filename + ' not found!');
 end;
 
 procedure loadAtlasTexture;
@@ -271,6 +274,17 @@ begin
   errorMessage('Atlas-Json not found!');
 end;
 
+procedure initTiles;
+VAR i : integer;
+    filename : string255;
+begin
+  for i := 1 to Max_Tiles do
+  begin
+    filename := 'gfx/tile' + IntToStr(i) + '.png';
+    tilesArr[i] := getAtlasImage(filename);
+  end;
+end;
+
 procedure initAtlas;
 VAR i : integer;
 begin
@@ -282,14 +296,13 @@ begin
 
   loadAtlasTexture;
   loadAtlasData;
+  initTiles;
 end;
 
 // *****************    MAP   *****************
 
 procedure drawMap;
 VAR x, y, n, x1, x2, y1, y2, mx, my : integer;
-    filename : String255;
-    atlas : PAtlasImage;
 begin
   x1 := (stage.camera.x MOD TILE_SIZE) * (-1);
   if (x1 = 0) then x2 := x1 + MAP_RENDER_WIDTH * TILE_SIZE
@@ -313,9 +326,7 @@ begin
         n := stage.map[mx,my];
         if (n > 0) then
         begin
-          filename := 'gfx/tile' + IntToStr(n) + '.png';
-          atlas := getAtlasImage(filename);
-          blitAtlasImage(atlas, x, y, 0);
+  blitAtlasImage(tilesArr[n], x, y, 0);
         end;
       end;
       INC(mx);
@@ -386,7 +397,6 @@ procedure addEntFromLine(line : String);
 VAR e : PEntity;
     namen : String;
     l, a, b : integer;
-    atlas : PAtlasImage;
 begin
   NEW(e);
   initEntity(e);
@@ -396,10 +406,9 @@ begin
   if namen = 'BLOCK' then
   begin
     e^.x := a; e^.y := b;
-    e^.texture := 'gfx/block.png';
-    atlas := getAtlasImage(e^.texture);
-    e^.w := atlas^.Rec.w;
-    e^.h := atlas^.Rec.h;
+    e^.texture := getAtlasImage('gfx/block.png');
+    e^.w := e^.texture^.Rec.w;
+    e^.h := e^.texture^.Rec.h;
     e^.flags := EF_SOLID + EF_WEIGHTLESS;
   end;
 end;
@@ -408,7 +417,7 @@ procedure loadEnts(filename : String);
 VAR Datei: Text;               (* Dateizeiger *)
     zeile : String;
 BEGIN
-  assign (Datei, filename);    (* pfad festlegen *)
+  assign (Datei, filename);    (* Pfad festlegen *)
   {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
   if IOResult = 0 then
   begin
@@ -423,13 +432,11 @@ end;
 
 procedure drawEntities;
 VAR e : PEntity;
-    atlas : PAtlasImage;
 begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    atlas := getAtlasImage(e^.texture);
-    blitAtlasImage(atlas, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
+    blitAtlasImage(e^.texture, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
@@ -489,7 +496,7 @@ begin
       e^.y := (my * TILE_SIZE) + adj;
       e^.dy := 0;
 
-      //ORG C-Code: e^.isOnGround = dy > 0;
+      //e^.isOnGround = dy > 0;
       if dy > 0 then e^.isOnGround := TRUE;
     end;
   end;
@@ -584,7 +591,7 @@ begin
   stage.camera.x := stage.camera.x - (SCREEN_WIDTH DIV 2);
   stage.camera.y := stage.camera.y - (SCREEN_HEIGHT DIV 2);
 
-  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
+  stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH  * TILE_SIZE) - SCREEN_WIDTH);
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
@@ -616,18 +623,16 @@ begin
 end;
 
 procedure initPlayer;
-VAR atlas : PAtlasImage;
 begin
   NEW(player);
   initEntity(player);
   stage.EntityTail^.next := player;
   stage.EntityTail := player;
-  pete[0] := 'gfx/pete01.png';
-  pete[1] := 'gfx/pete02.png';
-  atlas := getAtlasImage(pete[0]);
+  pete[0] := getAtlasImage('gfx/pete01.png');
+  pete[1] := getAtlasImage('gfx/pete02.png');
   player^.texture := pete[0];
-  player^.w := atlas^.Rec.w;
-  player^.h := atlas^.Rec.h;
+  player^.w := pete[0]^.Rec.w;
+  player^.h := pete[0]^.Rec.h;
 end;
 
 // *****************   STAGE   *****************
@@ -669,7 +674,7 @@ begin
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
-  app.Window := SDL_CreateWindow('Pete''s Pizza Party 4', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
+  app.Window := SDL_CreateWindow('Pete''s Pizza Party 4 with Atlas', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
 

@@ -24,10 +24,10 @@ converted from "C" to "Pascal" by Ulrich 2022
 * without momory holes; testet with: fpc -Criot -gl -gh ppp01_atlas.pas
 ***************************************************************************}
 
-PROGRAM ppp01;
+PROGRAM ppp01_Atlas;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, JsonTools, SDL2, SDL2_Image, SDL2_Mixer, sysutils;
+USES CRT, SDL2, SDL2_Image, SDL2_Mixer, JsonTools, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -39,6 +39,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
       NUMATLASBUCKETS   = 20;
+      MAX_TILES         = 7;               { Anz. Tiles in der Map }
       Map_Path          = 'data/map01.dat';
       Json_Path         = 'data/atlas.json';
       Tex_Path          = 'gfx/atlas.png';
@@ -76,6 +77,7 @@ VAR   app         : TApp;
       gRemainder  : double;
       atlasTex    : PSDL_Texture;
       atlases     : AtlasArr;
+      tilesArr    : ARRAY[1..Max_Tiles] of PAtlasImage;
 
 // *****************   UTIL   *****************
 
@@ -235,6 +237,17 @@ begin
   errorMessage('Atlas-Json not found!');
 end;
 
+procedure initTiles;
+VAR i : integer;
+    filename : string255;
+begin
+  for i := 1 to Max_Tiles do
+  begin
+    filename := 'gfx/tile' + IntToStr(i) + '.png';
+    tilesArr[i] := getAtlasImage(filename);
+  end;
+end;
+
 procedure initAtlas;
 VAR i : integer;
 begin
@@ -246,14 +259,13 @@ begin
 
   loadAtlasTexture;
   loadAtlasData;
+  initTiles;
 end;
 
 // *****************    MAP   *****************
 
 procedure drawMap;
 VAR x, y, n : integer;
-    filename : String255;
-    atlas : PAtlasImage;
 begin
   for y := 0 to PRED(MAP_RENDER_HEIGHT) do
   begin
@@ -262,9 +274,7 @@ begin
       n := stage.map[x,y];
       if (n > 0) then
       begin
-        filename := 'gfx/tile' + IntToStr(n) + '.png';
-        atlas := getAtlasImage(filename);
-        blitAtlasImage(atlas, x * TILE_SIZE, y * TILE_SIZE, 0);
+        blitAtlasImage(tilesArr[n], x * TILE_SIZE, y * TILE_SIZE, 0);
       end;
     end;
   end;
@@ -339,7 +349,7 @@ begin
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
-  app.Window := SDL_CreateWindow('Pete''s Pizza Party 1', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
+  app.Window := SDL_CreateWindow('Pete''s Pizza Party 1 with Atlas', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
 
