@@ -26,7 +26,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * corrected the sin-function for the pizza
 * added SDL_Log Message
 * Line: 795 prev repaired; touch initialized
-* without momory holes; testet with: fpc -Criot -gl -gh ppp06_atlas.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp06_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp06_Atlas;
@@ -45,7 +45,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLATFORM_SPEED    = 4;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-      NUMATLASBUCKETS   = 20;              {MAX_TILES = 183}
+      NUMATLASBUCKETS   = 17;              {MAX_TILES = 183}
       MAX_TILES         = 7;               { Anz. Tiles in der Map }
       EF_NONE           = 0;
       EF_WEIGHTLESS     = (2 << 0);   //2
@@ -83,7 +83,7 @@ TYPE                                       { "T" short for "TYPE" }
                     end;
       PEntity     = ^TEntity;
       TTouch      = Procedure(Wert1 : PEntity);
-      TTick       = Procedure;   
+      TTick       = Procedure;
       TEntity     = RECORD
                       x, y, ex, ey, sx, sy, dx, dy, value : double;
                       w, h, health : integer;
@@ -140,12 +140,12 @@ begin
 end;
 
 function HashCode(Value : String255) : UInt32;     // DJB hash function
-VAR i, x, Result : UInt32;                         // slightly modified
+VAR i, x, Result : UInt32;
 begin
-  Result := 5381;
+  Result := 0;
   for i := 1 to Length(Value) do
   begin
-    Result := (Result shl 5) - Result + Ord(Value[i]);
+    Result := (Result shl 4) + Ord(Value[i]);
     x := Result and $F0000000;
     if (x <> 0) then
       Result := Result xor (x shr 24);
@@ -183,9 +183,18 @@ begin
   end;
 end;
 
-function collision(x1, y1, w1, h1, x2, y2, w2, h2 : integer) : Boolean;
+function collision(x1, y1, w1, h1, x2, y2, w2, h2 : double) : Boolean;
 begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
+end;
+
+procedure pathTest;
+begin
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+  if NOT FileExists(Ents_Path) then ErrorMessage(Ents_Path + ' nicht gefunden!');
+  if NOT FileExists(Json_Path) then ErrorMessage(Json_Path + ' nicht gefunden!');
+  if NOT FileExists(Tex_Path) then ErrorMessage(Tex_Path + ' nicht gefunden!');
+  if NOT FileExists(Font_Path) then ErrorMessage(Font_Path + ' nicht gefunden!');
 end;
 
 // *****************   SOUND   ****************
@@ -720,7 +729,7 @@ begin
   other := stage.EntityHead^.next;
   while other <> NIL do
   begin
-    if ((other <> e) AND (collision(ROUND(e^.x), ROUND(e^.y), e^.w, e^.h, ROUND(other^.x), ROUND(other^.y), other^.w, other^.h))) then
+    if ((other <> e) AND collision(e^.x, e^.y, e^.w, e^.h, other^.x, other^.y, other^.w, other^.h)) then
     begin
       if (other^.flags AND EF_SOLID) <> 0 then
       begin
@@ -974,6 +983,7 @@ begin
   initEntity(stage.EntityHead);
   stage.EntityHead^.next := NIL;
   stage.EntityTail := stage.EntityHead;
+  gTicks := SDL_GetTicks;
   initEntities;
   initPlayer;
   initMap;
@@ -1110,6 +1120,7 @@ end;
 
 begin
   CLRSCR;
+  pathTest;
   initSDL;
   addExitProc(@atExit);
   initGame;

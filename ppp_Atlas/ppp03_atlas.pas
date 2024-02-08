@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * optimized picture atlas integrated
-* without momory holes; testet with: fpc -Criot -gl -gh ppp03_atlas.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp03_atlas.pas
 ***************************************************************************}
 
 PROGRAM ppp03_Atlas;
@@ -38,7 +38,7 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 6;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
-      NUMATLASBUCKETS   = 20;
+      NUMATLASBUCKETS   = 17;
       MAX_TILES         = 7;               { Anz. Tiles in der Map }
       Map_Path          = 'data/map01.dat';
       Json_Path         = 'data/atlas.json';
@@ -105,12 +105,12 @@ begin
 end;
 
 function HashCode(Value : String255) : UInt32;     // DJB hash function
-VAR i, x, Result : UInt32;                         // slightly modified
+VAR i, x, Result : UInt32;
 begin
-  Result := 5381;
+  Result := 0;
   for i := 1 to Length(Value) do
   begin
-    Result := (Result shl 5) - Result + Ord(Value[i]);
+    Result := (Result shl 4) + Ord(Value[i]);
     x := Result and $F0000000;
     if (x <> 0) then
       Result := Result xor (x shr 24);
@@ -123,6 +123,13 @@ procedure errorMessage(Message1 : String);
 begin
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'Error Box',PChar(Message1),NIL);
   HALT(1);
+end;
+
+procedure pathTest;
+begin
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+  if NOT FileExists(Json_Path) then ErrorMessage(Json_Path + ' nicht gefunden!');
+  if NOT FileExists(Tex_Path) then ErrorMessage(Tex_Path + ' nicht gefunden!');
 end;
 
 // *****************   DRAW   *****************
@@ -551,6 +558,7 @@ begin
   NEW(stage.EntityHead);
   stage.EntityHead^.next := NIL;
   stage.EntityTail := stage.EntityHead;
+  gTicks := SDL_GetTicks;
   initPlayer;
   initMap;
   app.Delegate.Logic := @logic_Game;
@@ -681,6 +689,7 @@ end;
 
 begin
   CLRSCR;
+  pathTest;
   initSDL;
   addExitProc(@atExit);
   initGame;
