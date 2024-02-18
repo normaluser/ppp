@@ -324,95 +324,6 @@ begin
     else isInsideMap := FALSE;   //0
 end;
 
-                                        
-                
-                   
-                      
-     
-         
-                
-                              
-                        
-                                                  
-                         
-       
-                         
-                                               
-                                                         
-                                         
-      
-    
-
-                                      
-                                                
-                   
-     
-                                                   
-                                                            
-                      
-       
-          
-                                                     
-                            
-                                                                                                   
-                                              
-     
-                            
-    
-
-                       
-                
-     
-                              
-                   
-       
-                                                                                    
-                 
-      
-    
-
-                                                       
-                    
-                  
-     
-                                  
-                       
-       
-                                                                                                                                                                
-         
-                                              
-           
-                         
-             
-                                            
-                        
-                        
-              
-                            
-
-                                 
-                     
-
-                                               
-            
-
-                         
-             
-                                            
-                        
-                        
-              
-                            
-
-                                 
-                     
-            
-          
-        
-                         
-      
-    
-
 procedure moveToWorld(e : PEntity; dx, dy : double);
 VAR mx, my, hit, adj : integer;
 begin
@@ -478,21 +389,14 @@ begin
 end;
 
 procedure move(e : PEntity);
-begin
-                                                
-       
+begin                                             
   e^.dy := e^.dy + 1.5;
   e^.dy := MAX(MIN(e^.dy, 18), -999);
       
   e^.isOnGround := FALSE;
-
                        
-  moveToWorld(e, e^.dx, 0);
-                              
-
-                       
+  moveToWorld(e, e^.dx, 0);     
   moveToWorld(e, 0, e^.dy);
-                              
 
   e^.x := MIN(MAX(e^.x, 0), MAP_WIDTH  * TILE_SIZE);
   e^.y := MIN(MAX(e^.y, 0), MAP_HEIGHT * TILE_SIZE);
@@ -540,48 +444,6 @@ begin
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
 end;
 
-                   
-     
-                  
-
-                                                                                       
-       
-                                                 
-                               
-      
-
-                                                                                        
-       
-                                                 
-                               
-      
-
-                                                                              
-                      
-
-                                                
-       
-                   
-                   
-                                          
-      
-    
-
-                     
-     
-              
-                     
-                                   
-                             
-
-                                           
-                                           
-
-                             
-
-                                                                      
-    
-
 // *****************   STAGE   *****************
 
 procedure draw_Game;
@@ -611,8 +473,7 @@ begin
   NEW(stage.EntityHead);
   stage.EntityHead^.next := NIL;
   stage.EntityTail := stage.EntityHead;
-
-               
+          
   initPlayer;
   initMap;
   app.Delegate.Logic := @logic_Game;
@@ -624,7 +485,7 @@ end;
 procedure initSDL;
 VAR rendererFlags, windowFlags : integer;
 begin
-  rendererFlags := SDL_RENDERER_PRESENTVSYNC OR SDL_RENDERER_ACCELERATED;
+  rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
