@@ -21,7 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
-* without momory holes; testet with: fpc -Criot -gl -gh ppp02.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp02.pas
 ***************************************************************************}
 
 PROGRAM ppp02;
@@ -82,6 +82,11 @@ begin
   HALT(1);
 end;
 
+procedure pathTest;
+begin
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+end;
+
 // *****************   DRAW   *****************
 
 procedure blit(texture : PSDL_Texture; x, y, center : integer);
@@ -93,8 +98,8 @@ begin
 
   if center <> 0 then
   begin
-    dest.x := dest.w DIV 2;
-    dest.y := dest.h DIV 2;
+    dest.x := dest.x - dest.w DIV 2;
+    dest.y := dest.y - dest.h DIV 2;
   end;
 
   SDL_RenderCopy(app.Renderer, texture, NIL, @dest);
@@ -179,6 +184,8 @@ begin
   app.TextureHead^.texture := NIL;
   app.TextureHead^.next := NIL;
   app.TextureTail := app.TextureHead;
+  gTicks := SDL_GetTicks;
+  gRemainder := 0;
 end;
 
 // *****************    MAP   *****************
@@ -292,9 +299,6 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
-
   drawMap;
 end;
 
@@ -309,7 +313,7 @@ end;
 procedure initSDL;
 VAR rendererFlags, windowFlags : integer;
 begin
-  rendererFlags := SDL_RENDERER_PRESENTVSYNC OR SDL_RENDERER_ACCELERATED;
+  rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
@@ -411,6 +415,7 @@ end;
 
 begin
   CLRSCR;
+  PathTest;
   initSDL;
   addExitProc(@atExit);
   initStage;

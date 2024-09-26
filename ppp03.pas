@@ -21,7 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
-* without momory holes; testet with: fpc -Criot -gl -gh ppp03.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp03.pas
 ***************************************************************************}
 
 PROGRAM ppp03;
@@ -93,6 +93,11 @@ begin
   HALT(1);
 end;
 
+procedure pathTest;
+begin
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+end;
+
 procedure InitEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
@@ -110,8 +115,8 @@ begin
 
   if center <> 0 then
   begin
-    dest.x := dest.w DIV 2;
-    dest.y := dest.h DIV 2;
+    dest.x := dest.x - dest.w DIV 2;
+    dest.y := dest.y - dest.h DIV 2;
   end;
 
   SDL_RenderCopy(app.Renderer, texture, NIL, @dest);
@@ -389,15 +394,12 @@ begin
 end;
 
 procedure move(e : PEntity);
-begin                                             
+begin
   e^.dy := e^.dy + 1.5;
   e^.dy := MAX(MIN(e^.dy, 18), -999);
-      
   e^.isOnGround := FALSE;
-                       
-  moveToWorld(e, e^.dx, 0);     
+  moveToWorld(e, e^.dx, 0);
   moveToWorld(e, 0, e^.dy);
-
   e^.x := MIN(MAX(e^.x, 0), MAP_WIDTH  * TILE_SIZE);
   e^.y := MIN(MAX(e^.y, 0), MAP_HEIGHT * TILE_SIZE);
 end;
@@ -427,7 +429,7 @@ end;
 
 procedure initEntities;
 begin
-                      
+
 end;
 
 // ****************   CAMERA   ****************
@@ -448,9 +450,6 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
-
   drawMap;
   drawEntities;
 end;
@@ -473,7 +472,9 @@ begin
   NEW(stage.EntityHead);
   stage.EntityHead^.next := NIL;
   stage.EntityTail := stage.EntityHead;
-          
+
+  gTicks := SDL_GetTicks;
+  gRemainder := 0;
   initPlayer;
   initMap;
   app.Delegate.Logic := @logic_Game;
@@ -605,6 +606,7 @@ end;
 
 begin
   CLRSCR;
+  PathTest;
   initSDL;
   addExitProc(@atExit);
   initGame;

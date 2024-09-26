@@ -21,7 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
-* without momory holes; testet with: fpc -Criot -gl -gh ppp04.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp04.pas
 ***************************************************************************}
 
 PROGRAM ppp04;
@@ -98,6 +98,11 @@ begin
   HALT(1);
 end;
 
+procedure pathTest;
+begin
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+end;
+
 procedure logMessage(Message1 : string);
 VAR Fmt : PChar;
 begin
@@ -105,7 +110,7 @@ begin
   SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
 end;
 
-function collision(x1, y1, w1, h1, x2, y2, w2, h2 : integer) : Boolean;
+function collision(x1, y1, w1, h1, x2, y2, w2, h2 : double) : Boolean;
 begin
   collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
 end;
@@ -127,8 +132,8 @@ begin
 
   if center <> 0 then
   begin
-    dest.x := dest.w DIV 2;
-    dest.y := dest.h DIV 2;
+    dest.x := dest.x - dest.w DIV 2;
+    dest.y := dest.y - dest.h DIV 2;
   end;
 
   SDL_RenderCopy(app.Renderer, texture, NIL, @dest);
@@ -353,7 +358,7 @@ begin
   other := stage.EntityHead^.next;
   while other <> NIL do
   begin
-    if ((other <> e) AND collision(ROUND(e^.x), ROUND(e^.y), ROUND(e^.w), ROUND(e^.h), ROUND(other^.x), ROUND(other^.y), ROUND(other^.w), ROUND(other^.h))) then
+    if ((other <> e) AND collision(e^.x, e^.y, e^.w, e^.h, other^.x, other^.y, other^.w, other^.h)) then
     begin
       if (other^.flags AND EF_SOLID) <> 0 then
       begin
@@ -547,9 +552,6 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.renderer, NIL);
-
   drawMap;
   drawEntities;
 end;
@@ -573,6 +575,8 @@ begin
   stage.EntityHead^.next := NIL;
   stage.EntityTail := stage.EntityHead;
 
+  gTicks := SDL_GetTicks;
+  gRemainder := 0;
   initEntities;
   initPlayer;
   initMap;
@@ -585,7 +589,7 @@ end;
 procedure initSDL;
 VAR rendererFlags, windowFlags : integer;
 begin
-  rendererFlags := SDL_RENDERER_PRESENTVSYNC OR SDL_RENDERER_ACCELERATED;
+  rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
@@ -705,6 +709,7 @@ end;
 
 begin
   CLRSCR;
+  PathTest;
   initSDL;
   addExitProc(@atExit);
   initGame;
