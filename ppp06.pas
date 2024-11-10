@@ -24,6 +24,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 * Procedural Parameter for Touch Pizza integrated
 * corrected the sin-function for the pizza
 * added SDL_Log Message
+* SCANF Funktion aus C braucht keine Integervariable
 * without momory holes; tested with: fpc -Criot -gl -gh ppp06.pas
 ***************************************************************************}
 
@@ -122,7 +123,7 @@ end;
 
 procedure pathTest;
 begin
-  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' not found!');
 end;
 
 procedure logMessage(Message1 : string);
@@ -397,13 +398,13 @@ end;
 procedure initBlock(line : string);
 VAR e : PEntity;
     namen : string;
-    l, a, b : integer;
+    a, b : integer;
 begin
   NEW(e);
   initEntity(e);
   stage.EntityTail^.next := e;
   stage.EntityTail := e;
-  l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
+  SScanf(line, '%s %d %d', [@namen, @a, @b]);
   e^.x := a; e^.y := b;
   e^.texture := loadTexture('gfx/block.png');
   SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
@@ -434,13 +435,13 @@ end;
 procedure initPlatform(line : string);
 VAR e : PEntity;
     namen : string;
-    l, a, b, c, d : integer;
+    a, b, c, d : integer;
 begin
   NEW(e);
   initEntity(e);
   stage.EntityTail^.next := e;
   stage.EntityTail := e;
-  l := SScanf(line, '%s %d %d %d %d', [@namen, @a, @b, @c, @d]);
+  SScanf(line, '%s %d %d %d %d', [@namen, @a, @b, @c, @d]);
   e^.sx := a; e^.sy := b;     { sx, sy : StartX, StartY }
   e^.ex := c; e^.ey := d;     { ex, ey : EndX,   EndY   }
 
@@ -486,13 +487,13 @@ end;
 procedure initPizza(line : string);
 VAR e : PEntity;
     namen : string;
-    l, a, b : integer;
+    a, b : integer;
 begin
   NEW(e);
   initEntity(e);
   stage.EntityTail^.next := e;
   stage.EntityTail := e;
-  l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
+  SScanf(line, '%s %d %d', [@namen, @a, @b]);
   e^.x := a; e^.y := b; e^.sy := b;    // sy: helping variable for orginal y value
   e^.texture := loadTexture('gfx/pizza.png');
   SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
@@ -516,9 +517,8 @@ end;
 
 procedure addEntFromLine(line : string);
 VAR namen : string;
-    l : integer;
 begin
-  l := SScanf(line, '%s', [@namen]);
+  SScanf(line, '%s', [@namen]);
   if namen = 'BLOCK' then
   begin
     initBlock(line);

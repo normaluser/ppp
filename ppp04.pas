@@ -21,6 +21,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
+* SCANF Funktion aus C braucht keine Integervariable
 * without momory holes; tested with: fpc -Criot -gl -gh ppp04.pas
 ***************************************************************************}
 
@@ -100,7 +101,7 @@ end;
 
 procedure pathTest;
 begin
-  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' nicht gefunden!');
+  if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' not found!');
 end;
 
 procedure logMessage(Message1 : string);
@@ -307,13 +308,13 @@ end;
 procedure addEntFromLine(line : string);
 VAR e : PEntity;
     namen : string;
-    l, a, b : integer;
+    a, b : integer;
 begin
   NEW(e);
   initEntity(e);
   stage.EntityTail^.next := e;
   stage.EntityTail := e;
-  l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
+  SScanf(line, '%s %d %d', [@namen, @a, @b]);
   if namen = 'BLOCK' then
   begin
     e^.x := a; e^.y := b;
