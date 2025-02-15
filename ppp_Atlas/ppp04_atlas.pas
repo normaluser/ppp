@@ -26,7 +26,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 PROGRAM ppp04_Atlas;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, JsonTools, sysutils;
+USES SDL2, SDL2_Image, Math, JsonTools, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -647,8 +647,8 @@ end;
 
 procedure draw_Game;
 begin
-  SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
-  SDL_RenderFillRect(app.Renderer, NIL);
+  //SDL_SetRenderDrawColor(app.Renderer, 128, 192, 255, 255);
+  //SDL_RenderFillRect(app.Renderer, NIL);
   drawMap;
   drawEntities;
 end;
@@ -680,16 +680,13 @@ VAR rendererFlags, windowFlags : integer;
 begin
   rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
+
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
   app.Window := SDL_CreateWindow('Pete''s Pizza Party 4 with Atlas', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
-
-  if MIX_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) < 0 then
-    errorMessage(SDL_GetError());
-  Mix_AllocateChannels(MAX_SND_CHANNELS);
 
   SDL_SetHint(SDL_HINT_RENDER_BATCHING, '1');
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 'linear');
@@ -743,10 +740,8 @@ procedure atExit;
 begin
   SDL_DestroyTexture(atlasTex);
   if ExitCode <> 0 then cleanUp;
-  Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
   SDL_DestroyWindow(app.Window);
-  MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
   if Exitcode <> 0 then WriteLn(SDL_GetError());
@@ -796,7 +791,6 @@ end;
 // *****************   MAIN   *****************
 
 begin
-  CLRSCR;
   pathTest;
   initSDL;
   addExitProc(@atExit);

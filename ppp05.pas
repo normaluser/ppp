@@ -28,7 +28,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 PROGRAM ppp05;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, sysutils;
+USES CRT, SDL2, SDL2_Image, Math, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -711,16 +711,13 @@ VAR rendererFlags, windowFlags : integer;
 begin
   rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
+
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
   app.Window := SDL_CreateWindow('Pete''s Pizza Party 5', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
-
-  if MIX_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) < 0 then
-    errorMessage(SDL_GetError());
-  Mix_AllocateChannels(MAX_SND_CHANNELS);
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 'linear');
   app.Renderer := SDL_CreateRenderer(app.Window, -1, rendererFlags);
@@ -775,10 +772,8 @@ begin
     SDL_DestroyTexture(Tiles[i]);
 
   if ExitCode <> 0 then cleanUp;
-  Mix_CloseAudio;
   SDL_DestroyRenderer(app.Renderer);
   SDL_DestroyWindow(app.Window);
-  MIX_Quit;   { Quits the Music / Sound }
   IMG_Quit;   { Quits the SDL_Image }
   SDL_Quit;   { Quits the SDL }
   if Exitcode <> 0 then WriteLn(SDL_GetError());
