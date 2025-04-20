@@ -31,7 +31,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 PROGRAM ppp06;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, sysutils;
+USES CRT, SDL2, SDL2_Image, SDL2_Mixer, Math, sysutils, cTypes;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -79,7 +79,8 @@ TYPE                                        { "T" short for "TYPE" }
       TTick       = Procedure;
       TEntity     = RECORD
                       x, y, ex, ey, sx, sy, dx, dy, value : double;
-                      w, h, health : integer;
+                      w, h : cint;
+                      health : integer;
                       isOnGround : Boolean;
                       texture : PSDL_Texture;
                       touch : TTouch;

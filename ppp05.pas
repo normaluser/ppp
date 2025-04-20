@@ -28,7 +28,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 PROGRAM ppp05;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, SDL2, SDL2_Image, Math, sysutils;
+USES CRT, SDL2, SDL2_Image, Math, sysutils, cTypes;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -72,7 +72,7 @@ TYPE                                        { "T" short for "TYPE" }
       TTick       = Procedure(Wert1 : PEntity);
       TEntity     = RECORD
                       x, y, ex, ey, sx, sy, dx, dy : double;
-                      w, h : integer;
+                      w, h : cint;
                       isOnGround : Boolean;
                       texture : PSDL_Texture;
                       tick : TTick;

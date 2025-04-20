@@ -21,13 +21,13 @@ converted from "C" to "Pascal" by Ulrich 2022
 ***************************************************************************
 * changed all PChar to string Types for better string handling!
 * Procedural Parameters for Delegate Draw/Logic
-* without momory holes; tested with: fpc -Criot -gl -gh ppp03.pas
+* without momory holes; tested with: fpc -Criot -gl -gh ppp04.pas
 ***************************************************************************}
 
-PROGRAM ppp03;
+PROGRAM ppp04;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES SDL2, SDL2_Image, Math, sysutils, cTypes;
+USES SDL2, SDL2_Image, Math, sysutils;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -40,14 +40,23 @@ CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       PLAYER_MOVE_SPEED = 6;
       MAX_KEYBOARD_KEYS = 350;
       MAX_SND_CHANNELS  = 16;
+      cFPS              = 60;                       { Ganzzahlig }
+      LOGIC_RATE        = (cFPS / 1000);      { Logic_Rate => real number }
+      EF_NONE           = 0;
+      EF_WEIGHTLESS     = (2 << 0);   //2
+      EF_SOLID          = (2 << 1);   //4
 
-      Map_Path          = 'data/map01.dat';
+      Map_Path          = 'data/map04.dat';
+      Ents_Path         = 'data/ents04.dat';
 
 TYPE                                        { "T" short for "TYPE" }
       TDelegating = Procedure;
       TDelegate   = RECORD
                       logic, draw : TDelegating;
                     end;
+      TDev        = RECORD
+                      TFPS : integer;
+                   end;
       PTexture    = ^TTexture;
       TTexture    = RECORD
                       name : string;
@@ -57,6 +66,8 @@ TYPE                                        { "T" short for "TYPE" }
       TApp        = RECORD
                       Window   : PSDL_Window;
                       Renderer : PSDL_Renderer;
+                      deltaTime : double;
+                      dev       : TDev;
                       Keyboard : ARRAY[0..MAX_KEYBOARD_KEYS] OF integer;
                       TextureHead, TextureTail : PTexture;
                       Delegate : TDelegate;
@@ -64,9 +75,10 @@ TYPE                                        { "T" short for "TYPE" }
       PEntity     = ^TEntity;
       TEntity     = RECORD
                       x, y, dx, dy : double;
-                      w, h : cint;
+                      w, h : integer;
                       isOnGround : Boolean;
                       texture : PSDL_Texture;
+                      flags : UInt32;
                       next : PEntity;
                     end;
       TStage      = RECORD
@@ -84,6 +96,9 @@ VAR   app         : TApp;
       tiles       : ARRAY[1..MAX_TILES] of PSDL_Texture;
       pete        : ARRAY[0..1] of PSDL_Texture;
       player      : PEntity;
+      FPS         : integer;
+      thentime,
+      nextFPS     : LongInt;
 
 // *****************   UTIL   *****************
 
@@ -98,10 +113,22 @@ begin
   if NOT FileExists(Map_Path) then ErrorMessage(Map_Path + ' not found!');
 end;
 
+procedure logMessage(Message1 : string);
+VAR Fmt : PChar;
+begin
+  Fmt := 'File not found: %s'#13;    // Formatstring und "ARRAY of const" als Parameteruebergabe in [ ]
+  SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, Fmt, [PChar(Message1)]);
+end;
+
+function collision(x1, y1, w1, h1, x2, y2, w2, h2 : double) : Boolean;
+begin
+  collision := (MAX(x1, x2) < MIN(x1 + w1, x2 + w2)) AND (MAX(y1, y2) < MIN(y1 + h1, y2 + h2));
+end;
+
 procedure InitEntity(e : PEntity);
 begin
   e^.x := 0.0; e^.y := 0.0; e^.dx := 0.0; e^.dy := 0.0; e^.w := 0; e^.h := 0;
-  e^.isOnGround := FALSE; e^.texture := NIL; e^.next := NIL;
+  e^.isOnGround := FALSE; e^.texture := NIL; e^.flags := EF_NONE; e^.next := NIL;
 end;
 
 // *****************   DRAW   *****************
@@ -192,48 +219,6 @@ begin
     filename := 'gfx/tile' + IntToStr(i) + '.png';
     tiles[i] := loadTexture(filename);
   end;
-end;
-
-procedure doPlayer;
-begin
-  player^.dx := 0;
-
-  if ((app.Keyboard[SDL_SCANCODE_A] = 1) OR (app.Keyboard[SDL_SCANCODE_LEFT] = 1)) then
-  begin
-    player^.dx := player^.dx - PLAYER_MOVE_SPEED;
-    player^.texture := pete[1];
-  end;
-
-  if ((app.Keyboard[SDL_SCANCODE_D] = 1) OR (app.Keyboard[SDL_SCANCODE_RIGHT] = 1)) then
-  begin
-    player^.dx := player^.dx + PLAYER_MOVE_SPEED;
-    player^.texture := pete[0];
-  end;
-
-  if ((app.Keyboard[SDL_SCANCODE_I] = 1) AND (player^.isOnGround = TRUE)) then
-    player^.dy := -20;
-
-  if (app.Keyboard[SDL_SCANCODE_SPACE] = 1) then
-  begin
-    player^.x := 0;
-    player^.y := 0;
-    app.Keyboard[SDL_SCANCODE_SPACE] := 0;
-  end;
-end;
-
-procedure initPlayer;
-begin
-  NEW(player);
-  initEntity(player);
-  stage.EntityTail^.next := player;
-  stage.EntityTail := player;
-
-  pete[0] := loadTexture('gfx/pete01.png');
-  pete[1] := loadTexture('gfx/pete02.png');
-
-  player^.texture := pete[0];
-
-  SDL_QueryTexture(player^.texture, NIL, NIL, @player^.w, @player^.h);
 end;
 
 // *****************    MAP   *****************
@@ -329,12 +314,100 @@ begin
     else isInsideMap := FALSE;   //0
 end;
 
+procedure addEntFromLine(line : string);
+VAR e : PEntity;
+    namen : string;
+    l, a, b : integer;
+begin
+  NEW(e);
+  initEntity(e);
+  stage.EntityTail^.next := e;
+  stage.EntityTail := e;
+  l := SScanf(line, '%s %d %d', [@namen, @a, @b]);
+  if namen = 'BLOCK' then
+  begin
+    e^.x := a; e^.y := b;
+    e^.texture := loadTexture('gfx/block.png');
+    SDL_QueryTexture(e^.texture, NIL, NIL, @e^.w, @e^.h);
+    e^.flags := EF_SOLID + EF_WEIGHTLESS;
+  end;
+end;
+
+procedure loadEnts(filename : string);
+VAR Datei: Text;               (* Dateizeiger *)
+    zeile : string;
+BEGIN
+  assign (Datei, filename);    (* pfad festlegen *)
+  {$i-}; reset(Datei); {$i+};  (* Datei zum Lesen oeffnen *)
+  if IOResult = 0 then
+  begin
+    REPEAT
+      readLn (Datei, zeile);   (* eine Zeile lesen *)
+      addEntFromLine(zeile);
+    UNTIL EOF (Datei);  (* Abbruch, wenn das Zeilenende erreicht ist; also wenn EOF TRUE liefert *)
+    close (Datei);      (* Datei schliessen *)
+  end
+  else logMessage(filename);
+end;
+
+procedure drawEntities;
+VAR e : PEntity;
+begin
+  e := stage.EntityHead^.next;
+  while e <> NIL do
+  begin
+    blit(e^.texture, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
+    e := e^.next;
+  end;
+end;
+
+procedure moveToEntities(e : PEntity; dx, dy : double);
+VAR other : PEntity;
+    adj : integer;
+begin
+  other := stage.EntityHead^.next;
+  while other <> NIL do
+  begin
+    if ((other <> e) AND collision(e^.x, e^.y, e^.w, e^.h, other^.x, other^.y, other^.w, other^.h)) then
+    begin
+      if (other^.flags AND EF_SOLID) <> 0 then
+      begin
+        if (dy <> 0) then
+        begin
+          //adj = dy > 0 ? -e^.h : other^.h;
+          if dy > 0 then
+            adj := -e^.h
+          else
+            adj := other^.h;
+
+          e^.y := other^.y + adj;
+          e^.dy := 0;
+
+          if dy > 0 then e^.isOnGround := TRUE;
+        end;
+
+        if (dx <> 0) then
+        begin
+          //adj = dx > 0 ? -e^.w : other^.w;
+          if dx > 0 then
+            adj := -e^.w
+          else
+            adj := other^.w;
+
+          e^.x := other^.x + adj;
+          e^.dx := 0;
+        end;
+      end;
+    end;
+    other := other^.next;
+  end;
+end;
+
 procedure moveToWorld(e : PEntity; dx, dy : double);
 VAR mx, my, hit, adj : integer;
 begin
   if (dx <> 0) then
   begin
-    e^.x := e^.x + dx;
     //ORG C-Code: mx = dx > 0 ? (e->x + e->w) : e->x;
     if dx > 0 then mx := TRUNC(e^.x + e^.w)
               else mx := TRUNC(e^.x);
@@ -362,8 +435,6 @@ begin
 
   if (dy <> 0) then
   begin
-    e^.y := e^.y + dy;
-
     //ORG C-Code: my = dy > 0 ? (e^.y + e^.h) : e^.y;
     if dy > 0 then my := TRUNC(e^.y + e^.h)
               else my := TRUNC(e^.y);
@@ -395,11 +466,21 @@ end;
 
 procedure move(e : PEntity);
 begin
-  e^.dy := e^.dy + 1.5;
-  e^.dy := MAX(MIN(e^.dy, 18), -999);
+  if (NOT(e^.flags AND EF_WEIGHTLESS <> 0)) then
+  begin
+    e^.dy := e^.dy + 1.5 * app.DeltaTime;
+    e^.dy := MAX(MIN(e^.dy, 18), -999);
+  end;
   e^.isOnGround := FALSE;
+
+  e^.x := e^.x + e^.dx;
   moveToWorld(e, e^.dx, 0);
+  moveToEntities(e, e^.dx, 0);
+
+  e^.y := e^.y + e^.dy;
   moveToWorld(e, 0, e^.dy);
+  moveToEntities(e, 0, e^.dy);
+
   e^.x := MIN(MAX(e^.x, 0), MAP_WIDTH  * TILE_SIZE);
   e^.y := MIN(MAX(e^.y, 0), MAP_HEIGHT * TILE_SIZE);
 end;
@@ -410,26 +491,15 @@ begin
   e := stage.EntityHead^.next;
   while e <> NIL do
   begin
-    //selv := e;
+//  selv := e;
     move(e);
-    e := e^.next;
-  end;
-end;
-
-procedure drawEntities;
-VAR e : PEntity;
-begin
-  e := stage.EntityHead^.next;
-  while e <> NIL do
-  begin
-    blit(e^.texture, ROUND(e^.x - stage.camera.x), ROUND(e^.y - stage.camera.y), 0);
     e := e^.next;
   end;
 end;
 
 procedure initEntities;
 begin
-
+  loadEnts(Ents_Path);
 end;
 
 // ****************   CAMERA   ****************
@@ -444,6 +514,48 @@ begin
 
   stage.camera.x := MIN(MAX(stage.camera.x, 0), (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH);
   stage.camera.y := MIN(MAX(stage.camera.y, 0), (MAP_HEIGHT * TILE_SIZE) - SCREEN_HEIGHT);
+end;
+
+procedure doPlayer;
+begin
+  player^.dx := 0;
+
+  if ((app.Keyboard[SDL_SCANCODE_A] = 1) OR (app.Keyboard[SDL_SCANCODE_LEFT] = 1)) then
+  begin
+    player^.dx := player^.dx - PLAYER_MOVE_SPEED * app.DeltaTime;
+    player^.texture := pete[1];
+  end;
+
+  if ((app.Keyboard[SDL_SCANCODE_D] = 1) OR (app.Keyboard[SDL_SCANCODE_RIGHT] = 1)) then
+  begin
+    player^.dx := player^.dx + PLAYER_MOVE_SPEED * app.DeltaTime;
+    player^.texture := pete[0];
+  end;
+
+  if ((app.Keyboard[SDL_SCANCODE_I] = 1) AND (player^.isOnGround = TRUE)) then
+    player^.dy := -20;
+
+  if (app.Keyboard[SDL_SCANCODE_SPACE] = 1) then
+  begin
+    player^.x := 0;
+    player^.y := 0;
+    app.Keyboard[SDL_SCANCODE_SPACE] := 0;
+  end;
+end;
+
+procedure initPlayer;
+begin
+  NEW(player);
+  initEntity(player);
+  stage.EntityTail^.next := player;
+  stage.EntityTail := player;
+
+  pete[0] := loadTexture('gfx/pete01.png');
+  pete[1] := loadTexture('gfx/pete02.png');
+
+  player^.texture := pete[0];
+
+  SDL_QueryTexture(player^.texture, NIL, NIL, @player^.w, @player^.h);
 end;
 
 // *****************   STAGE   *****************
@@ -475,6 +587,7 @@ begin
 
   gTicks := SDL_GetTicks;
   gRemainder := 0;
+  initEntities;
   initPlayer;
   initMap;
   app.Delegate.Logic := @logic_Game;
@@ -488,11 +601,10 @@ VAR rendererFlags, windowFlags : integer;
 begin
   rendererFlags := {SDL_RENDERER_PRESENTVSYNC OR} SDL_RENDERER_ACCELERATED;
   windowFlags := 0;
-
   if SDL_Init(SDL_INIT_VIDEO) < 0 then
     errorMessage(SDL_GetError());
 
-  app.Window := SDL_CreateWindow('Pete''s Pizza Party 3', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
+  app.Window := SDL_CreateWindow('Pete''s Pizza Party 4 with FPS', SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags);
   if app.Window = NIL then
     errorMessage(SDL_GetError());
 
@@ -584,7 +696,32 @@ end;
 
 // *************   CAPFRAMERATE   *************
 
-procedure CapFrameRate(VAR remainder : double; VAR Ticks : UInt32);
+procedure logic1;
+VAR tmpDelta : double;
+begin
+  // don't exceed target logic rate
+  while (app.deltaTime > 1) do
+  begin
+    tmpDelta := app.deltaTime;
+    app.deltaTime := 1;
+    app.delegate.logic;
+    app.deltaTime := (tmpDelta - 1);
+  end;
+  app.delegate.logic;
+end;
+
+procedure doFPS;
+begin
+  INC(FPS);
+  if (SDL_GetTicks >= nextFPS) then
+  begin
+    app.dev.TFPS := FPS;
+    FPS := 0;
+    nextFPS := SDL_GetTicks + 1000;
+  end;
+end;
+
+(* procedure CapFrameRate(VAR remainder : double; VAR Ticks : UInt32);
 VAR wait, FrameTime : longint;
 begin
   wait := 16 + TRUNC(remainder);
@@ -595,7 +732,7 @@ begin
   SDL_Delay(wait);
   remainder := remainder + 0.667;
   Ticks := SDL_GetTicks;
-end;
+end;  *)
 
 // *****************   MAIN   *****************
 
@@ -606,15 +743,22 @@ begin
   initGame;
   initStage;
   exitLoop := FALSE;
+  FPS := 0;
+  app.deltatime := 0;
+  app.dev.TFPS := 0;
+  nextFPS := SDL_GetTicks + 1000;
 
   while exitLoop = FALSE do
   begin
+    thentime := SDL_GetTicks;
     prepareScene;
     doInput;
-    app.delegate.Logic;
+    Logic1;
     app.delegate.Draw;
     presentScene;
-    CapFrameRate(gRemainder, gTicks);
+    SDL_Delay(1);
+    app.deltaTime := LOGIC_RATE * (SDL_GetTicks - thentime);
+    doFPS;
   end;
 
   cleanUp;

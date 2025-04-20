@@ -28,7 +28,7 @@ converted from "C" to "Pascal" by Ulrich 2022
 PROGRAM ppp04;
 
 {$COPERATORS OFF} {$mode FPC} {$H+}
-USES CRT, SDL2, SDL2_Image, Math, sysutils;
+USES CRT, SDL2, SDL2_Image, Math, sysutils, cTypes;
 
 CONST SCREEN_WIDTH      = 1280;            { size of the grafic window }
       SCREEN_HEIGHT     = 720;             { size of the grafic window }
@@ -69,7 +69,7 @@ TYPE                                        { "T" short for "TYPE" }
       PEntity     = ^TEntity;
       TEntity     = RECORD
                       x, y, dx, dy : double;
-                      w, h : integer;
+                      w, h : cint;
                       isOnGround : Boolean;
                       texture : PSDL_Texture;
                       flags : UInt32;
